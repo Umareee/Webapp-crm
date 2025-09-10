@@ -136,7 +136,38 @@ export default function AuthTokensPage() {
       const data = await response.json();
       
       if (data.success) {
-        setNewToken(data.data.token);
+        const newToken = data.data.token;
+        setNewToken(newToken);
+        
+        // Register this browser as a device by validating the new token
+        try {
+          const validateResponse = await fetch(`${JWT_API_URL}/auth/validate-token`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              token: newToken,
+              deviceInfo: {
+                screen: { 
+                  width: window.screen.width, 
+                  height: window.screen.height 
+                },
+                timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+                language: navigator.language,
+                platform: navigator.platform
+              }
+            })
+          });
+          
+          const validateData = await validateResponse.json();
+          if (!validateData.success) {
+            console.warn('Failed to register device:', validateData.error);
+          }
+        } catch (error) {
+          console.warn('Failed to register device:', error);
+        }
+        
         toast({
           title: 'Success',
           description: 'New authentication token generated successfully'

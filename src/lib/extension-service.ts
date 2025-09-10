@@ -17,7 +17,8 @@ export interface ExtensionSyncService {
 }
 
 class ChromeExtensionSyncService implements ExtensionSyncService {
-  private extensionId = 'ikadenoepdcldpfoenoibjdmdpjpkhhp'; // Your extension ID
+  // Extension ID will be determined dynamically or from environment
+  private extensionId = process.env.NEXT_PUBLIC_EXTENSION_ID || 'ikadenoepdcldpfoenoibjdmdpjpkhhp';
   private messageListeners = new Set<(data: { type: string; payload: any }) => void>();
 
   constructor() {
@@ -40,17 +41,35 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
   }
 
   async isExtensionConnected(): Promise<boolean> {
-    if (!window.chrome?.runtime) return false;
+    if (!window.chrome?.runtime) {
+      console.log('[Extension Service] Chrome runtime not available');
+      return false;
+    }
 
     return new Promise((resolve) => {
-      const timeout = setTimeout(() => resolve(false), 2000);
+      const timeout = setTimeout(() => {
+        console.log('[Extension Service] PING timeout after 2000ms');
+        resolve(false);
+      }, 2000);
+      
+      console.log('[Extension Service] Sending PING to extension:', this.extensionId);
       
       window.chrome.runtime.sendMessage(
         this.extensionId,
         { type: 'PING' },
         (response) => {
           clearTimeout(timeout);
-          resolve(!window.chrome.runtime.lastError && response?.type === 'PONG');
+          
+          if (window.chrome.runtime.lastError) {
+            console.log('[Extension Service] PING error:', window.chrome.runtime.lastError.message);
+            resolve(false);
+            return;
+          }
+          
+          console.log('[Extension Service] PING response:', response);
+          const isConnected = response?.type === 'PONG' && response?.success === true;
+          console.log('[Extension Service] Extension connected:', isConnected);
+          resolve(isConnected);
         }
       );
     });
