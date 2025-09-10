@@ -66,17 +66,35 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
   }
 
   private setupMessageListener() {
-    if (typeof window !== 'undefined' && window.chrome?.runtime) {
-      window.chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-        if (message.type?.startsWith('SYNC_')) {
+    if (typeof window !== 'undefined') {
+      // Listen for messages from extension content scripts
+      window.addEventListener('message', (event) => {
+        // Only accept messages from same origin
+        if (event.source !== window) return;
+        
+        if (event.data?.source === 'crm-extension' && event.data?.type?.startsWith('SYNC_')) {
           this.messageListeners.forEach(listener => {
             listener({
-              type: message.type,
-              payload: message.payload
+              type: event.data.type,
+              payload: event.data.payload
             });
           });
         }
       });
+
+      // Also try chrome.runtime if available (for externally_connectable)
+      if (window.chrome?.runtime) {
+        window.chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+          if (message.type?.startsWith('SYNC_')) {
+            this.messageListeners.forEach(listener => {
+              listener({
+                type: message.type,
+                payload: message.payload
+              });
+            });
+          }
+        });
+      }
     }
   }
 
@@ -113,12 +131,14 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
 
     return new Promise((resolve) => {
       const timeout = setTimeout(() => {
-        console.log('[Extension Service] PING timeout after 3000ms - extension may not be installed or responding');
-        resolve(false);
-      }, 3000);
+        console.log('[Extension Service] PING timeout after 5000ms - trying alternative detection methods');
+        // Try content script detection as fallback
+        this.detectViaContentScript().then(resolve);
+      }, 5000);
       
       console.log('[Extension Service] Sending PING to extension:', this.extensionId);
       
+      // Method 1: Try chrome.runtime.sendMessage (requires externally_connectable)
       try {
         window.chrome.runtime.sendMessage(
           this.extensionId,
@@ -131,12 +151,16 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
               console.log('[Extension Service] PING error:', error);
               
               if (error.includes('Could not establish connection')) {
-                console.log('[Extension Service] Extension not installed or not responding');
+                console.log('[Extension Service] Extension not installed or externally_connectable not configured');
+                // Try alternative method
+                this.detectViaContentScript().then(resolve);
               } else if (error.includes('Invalid extension id')) {
                 console.log('[Extension Service] Invalid extension ID - check NEXT_PUBLIC_EXTENSION_ID');
+                resolve(false);
+              } else {
+                // Try alternative method for other errors
+                this.detectViaContentScript().then(resolve);
               }
-              
-              resolve(false);
               return;
             }
             
@@ -149,8 +173,85 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
       } catch (error) {
         clearTimeout(timeout);
         console.error('[Extension Service] Error sending message to extension:', error);
-        resolve(false);
+        // Try alternative method
+        this.detectViaContentScript().then(resolve);
       }
+    });
+  }
+
+  private async detectViaContentScript(): Promise<boolean> {
+    return new Promise((resolve) => {
+      console.log('[Extension Service] Attempting content script detection...');
+      
+      // Method 1: Check for extension-specific DOM elements
+      const checkExtensionElements = () => {
+        const extensionElements = [
+          document.querySelector('#groups-crm-buttons'),
+          document.querySelector('.crm-check'),
+          document.querySelector('.groups-crm-checkbox'),
+          document.querySelector('[data-crm-extension]'),
+        ].filter(Boolean);
+        
+        if (extensionElements.length > 0) {
+          console.log('[Extension Service] Extension elements detected:', extensionElements.length);
+          return true;
+        }
+        return false;
+      };
+      
+      // Method 2: Try to communicate via window postMessage
+      const tryPostMessage = () => {
+        const messageId = Date.now().toString();
+        
+        const messageHandler = (event: MessageEvent) => {
+          if (event.source !== window) return;
+          
+          if (event.data?.source === 'crm-extension' && 
+              event.data?.type === 'PONG' && 
+              event.data?.messageId === messageId) {
+            window.removeEventListener('message', messageHandler);
+            console.log('[Extension Service] Extension responded via postMessage');
+            resolve(true);
+          }
+        };
+        
+        window.addEventListener('message', messageHandler);
+        
+        // Send ping via postMessage
+        window.postMessage({
+          source: 'crm-webapp',
+          type: 'PING',
+          messageId: messageId
+        }, '*');
+        
+        // Cleanup after timeout
+        setTimeout(() => {
+          window.removeEventListener('message', messageHandler);
+        }, 3000);
+      };
+      
+      // Check elements immediately
+      if (checkExtensionElements()) {
+        resolve(true);
+        return;
+      }
+      
+      // Try postMessage
+      tryPostMessage();
+      
+      // Check elements again after a short delay (extension might inject them)
+      setTimeout(() => {
+        if (checkExtensionElements()) {
+          resolve(true);
+          return;
+        }
+      }, 1000);
+      
+      // Final timeout
+      setTimeout(() => {
+        console.log('[Extension Service] Content script detection failed');
+        resolve(false);
+      }, 3000);
     });
   }
 
