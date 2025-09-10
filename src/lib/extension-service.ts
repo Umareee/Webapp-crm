@@ -41,37 +41,58 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
   }
 
   async isExtensionConnected(): Promise<boolean> {
+    // Check if we're in browser environment
+    if (typeof window === 'undefined') {
+      console.log('[Extension Service] Server-side environment detected');
+      return false;
+    }
+
+    // Check if Chrome runtime is available
     if (!window.chrome?.runtime) {
-      console.log('[Extension Service] Chrome runtime not available');
+      console.log('[Extension Service] Chrome runtime not available - extension may not be installed or this is not a Chrome-based browser');
       return false;
     }
 
     return new Promise((resolve) => {
       const timeout = setTimeout(() => {
-        console.log('[Extension Service] PING timeout after 2000ms');
+        console.log('[Extension Service] PING timeout after 3000ms - extension may not be installed or responding');
         resolve(false);
-      }, 2000);
+      }, 3000);
       
       console.log('[Extension Service] Sending PING to extension:', this.extensionId);
       
-      window.chrome.runtime.sendMessage(
-        this.extensionId,
-        { type: 'PING' },
-        (response) => {
-          clearTimeout(timeout);
-          
-          if (window.chrome.runtime.lastError) {
-            console.log('[Extension Service] PING error:', window.chrome.runtime.lastError.message);
-            resolve(false);
-            return;
+      try {
+        window.chrome.runtime.sendMessage(
+          this.extensionId,
+          { type: 'PING' },
+          (response) => {
+            clearTimeout(timeout);
+            
+            if (window.chrome.runtime.lastError) {
+              const error = window.chrome.runtime.lastError.message;
+              console.log('[Extension Service] PING error:', error);
+              
+              if (error.includes('Could not establish connection')) {
+                console.log('[Extension Service] Extension not installed or not responding');
+              } else if (error.includes('Invalid extension id')) {
+                console.log('[Extension Service] Invalid extension ID - check NEXT_PUBLIC_EXTENSION_ID');
+              }
+              
+              resolve(false);
+              return;
+            }
+            
+            console.log('[Extension Service] PING response:', response);
+            const isConnected = response?.type === 'PONG' && response?.success === true;
+            console.log('[Extension Service] Extension connected:', isConnected);
+            resolve(isConnected);
           }
-          
-          console.log('[Extension Service] PING response:', response);
-          const isConnected = response?.type === 'PONG' && response?.success === true;
-          console.log('[Extension Service] Extension connected:', isConnected);
-          resolve(isConnected);
-        }
-      );
+        );
+      } catch (error) {
+        clearTimeout(timeout);
+        console.error('[Extension Service] Error sending message to extension:', error);
+        resolve(false);
+      }
     });
   }
 
