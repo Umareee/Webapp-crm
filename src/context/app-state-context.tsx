@@ -193,22 +193,88 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
 
   // Sync data with extension whenever it changes
   useEffect(() => {
-    if (contacts.length > 0) {
-      syncWithExtension('contacts', contacts);
-    }
+    // Sync contacts (including empty arrays to clear extension data)
+    syncWithExtension('contacts', contacts);
   }, [contacts, syncWithExtension]);
 
   useEffect(() => {
-    if (tags.length > 0) {
-      syncWithExtension('tags', tags);
-    }
+    // Sync tags (including empty arrays to clear extension data)
+    syncWithExtension('tags', tags);
   }, [tags, syncWithExtension]);
 
   useEffect(() => {
-    if (templates.length > 0) {
-      syncWithExtension('templates', templates);
-    }
+    // Sync templates (including empty arrays to clear extension data)
+    syncWithExtension('templates', templates);
   }, [templates, syncWithExtension]);
+
+  // Listen for sync messages from extension
+  useEffect(() => {
+    const handleExtensionSync = (event: MessageEvent) => {
+      if (event.source !== window || event.data?.source !== 'crm-extension-sync') {
+        return;
+      }
+      
+      console.log('[AppState] Received sync from extension:', event.data.type);
+      
+      // Handle different sync types from extension
+      switch (event.data.type) {
+        case 'SYNC_TAGS_FROM_EXTENSION':
+          handleTagSyncFromExtension(event.data.payload);
+          break;
+        case 'SYNC_CONTACTS_FROM_EXTENSION':
+          handleContactSyncFromExtension(event.data.payload);
+          break;
+        case 'SYNC_TEMPLATES_FROM_EXTENSION':
+          handleTemplateSyncFromExtension(event.data.payload);
+          break;
+      }
+    };
+    
+    window.addEventListener('message', handleExtensionSync);
+    return () => window.removeEventListener('message', handleExtensionSync);
+  }, [user]);
+
+  const handleTagSyncFromExtension = async (extensionTags: Tag[]) => {
+    if (!user) return;
+    
+    try {
+      console.log('[AppState] Syncing tags from extension to Firebase:', extensionTags.length);
+      // TODO: Implement Firebase sync for tags from extension
+      // This would involve comparing extension tags with Firebase tags
+      // and updating Firebase with any changes
+      console.log('[AppState] Tag sync from extension - implementation needed');
+    } catch (error) {
+      console.error('[AppState] Failed to sync tags from extension:', error);
+    }
+  };
+
+  const handleContactSyncFromExtension = async (extensionContacts: Contact[]) => {
+    if (!user) return;
+    
+    try {
+      console.log('[AppState] Syncing contacts from extension to Firebase:', extensionContacts.length);
+      // TODO: Implement Firebase sync for contacts from extension
+      // This would involve comparing extension contacts with Firebase contacts
+      // and updating Firebase with any changes
+      console.log('[AppState] Contact sync from extension - implementation needed');
+    } catch (error) {
+      console.error('[AppState] Failed to sync contacts from extension:', error);
+    }
+  };
+
+  const handleTemplateSyncFromExtension = async (extensionTemplates: Template[]) => {
+    if (!user) return;
+    
+    try {
+      console.log('[AppState] Syncing templates from extension to Firebase:', extensionTemplates.length);
+      // TODO: Implement Firebase sync for templates from extension
+      // This would involve comparing extension templates with Firebase templates
+      // and updating Firebase with any changes
+      console.log('[AppState] Template sync from extension - implementation needed');
+    } catch (error) {
+      console.error('[AppState] Failed to sync templates from extension:', error);
+    }
+  };
 
 
   const toggleGenericSelection = (
