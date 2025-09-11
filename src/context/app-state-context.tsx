@@ -253,10 +253,17 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   };
 
   const handleContactSyncFromExtension = async (extensionContacts: Contact[]) => {
-    if (!user) return;
+    if (!user) {
+      console.error('[AppState] ❌ No user for contact sync');
+      return;
+    }
     
     try {
-      console.log('[AppState] Syncing contacts from extension to Firebase:', extensionContacts.length);
+      console.log('[AppState] 🔄 Starting contact sync from extension to Firebase:', {
+        contactCount: extensionContacts.length,
+        userId: user.uid,
+        contacts: extensionContacts.map(c => ({ id: c.id, name: c.name }))
+      });
       
       // Import Firebase sync function dynamically to avoid SSR issues
       const { syncContactsFromExtension } = await import('@/lib/firebase');
@@ -267,6 +274,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       console.log('[AppState] ✅ Contacts synced from extension to Firebase successfully');
     } catch (error) {
       console.error('[AppState] ❌ Failed to sync contacts from extension:', error);
+      console.error('[AppState] Error details:', error);
     }
   };
 
