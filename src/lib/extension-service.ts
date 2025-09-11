@@ -83,17 +83,21 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
       });
 
       // Also try chrome.runtime if available (for externally_connectable)
-      if (window.chrome?.runtime) {
-        window.chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-          if (message.type?.startsWith('SYNC_')) {
-            this.messageListeners.forEach(listener => {
-              listener({
-                type: message.type,
-                payload: message.payload
+      if (window.chrome?.runtime?.onMessage?.addListener) {
+        try {
+          window.chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+            if (message.type?.startsWith('SYNC_')) {
+              this.messageListeners.forEach(listener => {
+                listener({
+                  type: message.type,
+                  payload: message.payload
+                });
               });
-            });
-          }
-        });
+            }
+          });
+        } catch (error) {
+          console.log('[Extension Service] Could not set up chrome.runtime listener:', error);
+        }
       }
     }
   }
@@ -139,41 +143,47 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
       console.log('[Extension Service] Sending PING to extension:', this.extensionId);
       
       // Method 1: Try chrome.runtime.sendMessage (requires externally_connectable)
-      try {
-        window.chrome.runtime.sendMessage(
-          this.extensionId,
-          { type: 'PING' },
-          (response) => {
-            clearTimeout(timeout);
-            
-            if (window.chrome.runtime.lastError) {
-              const error = window.chrome.runtime.lastError.message;
-              console.log('[Extension Service] PING error:', error);
+      if (window.chrome?.runtime?.sendMessage) {
+        try {
+          window.chrome.runtime.sendMessage(
+            this.extensionId,
+            { type: 'PING' },
+            (response) => {
+              clearTimeout(timeout);
               
-              if (error.includes('Could not establish connection')) {
-                console.log('[Extension Service] Extension not installed or externally_connectable not configured');
-                // Try alternative method
-                this.detectViaContentScript().then(resolve);
-              } else if (error.includes('Invalid extension id')) {
-                console.log('[Extension Service] Invalid extension ID - check NEXT_PUBLIC_EXTENSION_ID');
-                resolve(false);
-              } else {
-                // Try alternative method for other errors
-                this.detectViaContentScript().then(resolve);
+              if (window.chrome?.runtime?.lastError) {
+                const error = window.chrome.runtime.lastError.message;
+                console.log('[Extension Service] PING error:', error);
+                
+                if (error.includes('Could not establish connection')) {
+                  console.log('[Extension Service] Extension not installed or externally_connectable not configured');
+                  // Try alternative method
+                  this.detectViaContentScript().then(resolve);
+                } else if (error.includes('Invalid extension id')) {
+                  console.log('[Extension Service] Invalid extension ID - check NEXT_PUBLIC_EXTENSION_ID');
+                  resolve(false);
+                } else {
+                  // Try alternative method for other errors
+                  this.detectViaContentScript().then(resolve);
+                }
+                return;
               }
-              return;
+              
+              console.log('[Extension Service] PING response:', response);
+              const isConnected = response?.type === 'PONG' && response?.success === true;
+              console.log('[Extension Service] Extension connected:', isConnected);
+              resolve(isConnected);
             }
-            
-            console.log('[Extension Service] PING response:', response);
-            const isConnected = response?.type === 'PONG' && response?.success === true;
-            console.log('[Extension Service] Extension connected:', isConnected);
-            resolve(isConnected);
-          }
-        );
-      } catch (error) {
+          );
+        } catch (error) {
+          clearTimeout(timeout);
+          console.error('[Extension Service] Error sending message to extension:', error);
+          // Try alternative method
+          this.detectViaContentScript().then(resolve);
+        }
+      } else {
         clearTimeout(timeout);
-        console.error('[Extension Service] Error sending message to extension:', error);
-        // Try alternative method
+        console.log('[Extension Service] chrome.runtime.sendMessage not available, trying content script detection');
         this.detectViaContentScript().then(resolve);
       }
     });
@@ -321,6 +331,11 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
   async syncContacts(contacts: any[]): Promise<void> {
     if (!await this.isExtensionConnected()) return;
 
+    if (!window.chrome?.runtime?.sendMessage) {
+      console.log('[Extension Service] chrome.runtime.sendMessage not available for sync');
+      return;
+    }
+
     return new Promise((resolve, reject) => {
       window.chrome.runtime.sendMessage(
         this.extensionId,
@@ -329,7 +344,7 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
           payload: { contacts }
         },
         (response) => {
-          if (window.chrome.runtime.lastError) {
+          if (window.chrome?.runtime?.lastError) {
             reject(window.chrome.runtime.lastError);
           } else {
             resolve();
@@ -342,6 +357,11 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
   async syncTags(tags: any[]): Promise<void> {
     if (!await this.isExtensionConnected()) return;
 
+    if (!window.chrome?.runtime?.sendMessage) {
+      console.log('[Extension Service] chrome.runtime.sendMessage not available for sync');
+      return;
+    }
+
     return new Promise((resolve, reject) => {
       window.chrome.runtime.sendMessage(
         this.extensionId,
@@ -350,7 +370,7 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
           payload: { tags }
         },
         (response) => {
-          if (window.chrome.runtime.lastError) {
+          if (window.chrome?.runtime?.lastError) {
             reject(window.chrome.runtime.lastError);
           } else {
             resolve();
@@ -363,6 +383,11 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
   async syncTemplates(templates: any[]): Promise<void> {
     if (!await this.isExtensionConnected()) return;
 
+    if (!window.chrome?.runtime?.sendMessage) {
+      console.log('[Extension Service] chrome.runtime.sendMessage not available for sync');
+      return;
+    }
+
     return new Promise((resolve, reject) => {
       window.chrome.runtime.sendMessage(
         this.extensionId,
@@ -371,7 +396,7 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
           payload: { templates }
         },
         (response) => {
-          if (window.chrome.runtime.lastError) {
+          if (window.chrome?.runtime?.lastError) {
             reject(window.chrome.runtime.lastError);
           } else {
             resolve();
@@ -393,6 +418,11 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
   async getExtensionData(type: 'contacts' | 'tags' | 'templates'): Promise<any> {
     if (!await this.isExtensionConnected()) return null;
 
+    if (!window.chrome?.runtime?.sendMessage) {
+      console.log('[Extension Service] chrome.runtime.sendMessage not available for getting data');
+      return null;
+    }
+
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => reject(new Error('Timeout')), 5000);
       
@@ -403,7 +433,7 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
         },
         (response) => {
           clearTimeout(timeout);
-          if (window.chrome.runtime.lastError) {
+          if (window.chrome?.runtime?.lastError) {
             reject(window.chrome.runtime.lastError);
           } else {
             resolve(response?.payload);
