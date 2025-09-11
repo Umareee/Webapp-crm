@@ -23,6 +23,7 @@ export type Contact = {
   tags: string[]; // array of tag IDs
   userId?: string; // Messenger user ID for sending messages
   source?: 'messenger' | 'facebook_group' | 'manual' | 'import';
+  groupId?: string; // Facebook group ID for group contacts
 };
 
 export type Campaign = {

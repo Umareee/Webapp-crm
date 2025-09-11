@@ -28,6 +28,7 @@ import {
   QuerySnapshot,
   DocumentData,
   getDoc,
+  getDocs,
 } from 'firebase/firestore';
 import type { Contact, TagData, TemplateData, Campaign, CampaignData } from './types';
 
@@ -179,8 +180,23 @@ export const updateContact = async (uid: string, contactId: string, contactData:
 };
 
 export const syncContactsFromExtension = async (uid: string, extensionContacts: Contact[]) => {
-  const batch = writeBatch(db);
+  console.log('[Firebase] Starting contact sync from extension:', extensionContacts.length, 'contacts');
   
+  // Get current Firebase contacts to compare
+  const contactsRef = collection(db, `users/${uid}/contacts`);
+  const currentSnapshot = await getDocs(contactsRef);
+  const currentFirebaseContacts = currentSnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+  
+  console.log('[Firebase] Current Firebase contacts:', currentFirebaseContacts.length);
+  
+  const batch = writeBatch(db);
+  const extensionContactIds = new Set(extensionContacts.map(c => c.id));
+  const currentFirebaseIds = new Set(currentFirebaseContacts.map(c => c.id));
+  
+  // 1. Add/Update contacts that exist in extension
   extensionContacts.forEach(contact => {
     const contactRef = doc(db, `users/${uid}/contacts`, contact.id);
     batch.set(contactRef, {
@@ -193,14 +209,40 @@ export const syncContactsFromExtension = async (uid: string, extensionContacts: 
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     }, { merge: true });
+    
+    console.log('[Firebase] Syncing contact:', contact.name, contact.id);
+  });
+  
+  // 2. Delete contacts that exist in Firebase but not in extension
+  currentFirebaseContacts.forEach(firebaseContact => {
+    if (!extensionContactIds.has(firebaseContact.id)) {
+      const contactRef = doc(db, `users/${uid}/contacts`, firebaseContact.id);
+      batch.delete(contactRef);
+      console.log('[Firebase] Deleting contact from Firebase:', firebaseContact.name, firebaseContact.id);
+    }
   });
   
   await batch.commit();
+  console.log('[Firebase] Contact sync completed');
 };
 
 export const syncTagsFromExtension = async (uid: string, extensionTags: any[]) => {
-  const batch = writeBatch(db);
+  console.log('[Firebase] Starting tag sync from extension:', extensionTags.length, 'tags');
   
+  // Get current Firebase tags to compare
+  const tagsRef = collection(db, `users/${uid}/tags`);
+  const currentSnapshot = await getDocs(tagsRef);
+  const currentFirebaseTags = currentSnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+  
+  console.log('[Firebase] Current Firebase tags:', currentFirebaseTags.length);
+  
+  const batch = writeBatch(db);
+  const extensionTagIds = new Set(extensionTags.map(t => t.id));
+  
+  // 1. Add/Update tags that exist in extension
   extensionTags.forEach(tag => {
     const tagRef = doc(db, `users/${uid}/tags`, tag.id);
     batch.set(tagRef, {
@@ -209,14 +251,40 @@ export const syncTagsFromExtension = async (uid: string, extensionTags: any[]) =
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     }, { merge: true });
+    
+    console.log('[Firebase] Syncing tag:', tag.name, tag.id);
+  });
+  
+  // 2. Delete tags that exist in Firebase but not in extension
+  currentFirebaseTags.forEach(firebaseTag => {
+    if (!extensionTagIds.has(firebaseTag.id)) {
+      const tagRef = doc(db, `users/${uid}/tags`, firebaseTag.id);
+      batch.delete(tagRef);
+      console.log('[Firebase] Deleting tag from Firebase:', firebaseTag.name, firebaseTag.id);
+    }
   });
   
   await batch.commit();
+  console.log('[Firebase] Tag sync completed');
 };
 
 export const syncTemplatesFromExtension = async (uid: string, extensionTemplates: any[]) => {
-  const batch = writeBatch(db);
+  console.log('[Firebase] Starting template sync from extension:', extensionTemplates.length, 'templates');
   
+  // Get current Firebase templates to compare
+  const templatesRef = collection(db, `users/${uid}/templates`);
+  const currentSnapshot = await getDocs(templatesRef);
+  const currentFirebaseTemplates = currentSnapshot.docs.map(doc => ({
+    id: doc.id,
+    ...doc.data()
+  }));
+  
+  console.log('[Firebase] Current Firebase templates:', currentFirebaseTemplates.length);
+  
+  const batch = writeBatch(db);
+  const extensionTemplateIds = new Set(extensionTemplates.map(t => t.id));
+  
+  // 1. Add/Update templates that exist in extension
   extensionTemplates.forEach(template => {
     const templateRef = doc(db, `users/${uid}/templates`, template.id);
     batch.set(templateRef, {
@@ -225,9 +293,21 @@ export const syncTemplatesFromExtension = async (uid: string, extensionTemplates
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
     }, { merge: true });
+    
+    console.log('[Firebase] Syncing template:', template.name, template.id);
+  });
+  
+  // 2. Delete templates that exist in Firebase but not in extension
+  currentFirebaseTemplates.forEach(firebaseTemplate => {
+    if (!extensionTemplateIds.has(firebaseTemplate.id)) {
+      const templateRef = doc(db, `users/${uid}/templates`, firebaseTemplate.id);
+      batch.delete(templateRef);
+      console.log('[Firebase] Deleting template from Firebase:', firebaseTemplate.name, firebaseTemplate.id);
+    }
   });
   
   await batch.commit();
+  console.log('[Firebase] Template sync completed');
 };
 
 
