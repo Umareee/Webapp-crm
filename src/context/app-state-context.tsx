@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import type { User } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import { onSnapshot, collection, doc, query, orderBy, QuerySnapshot, DocumentData } from 'firebase/firestore';
@@ -62,6 +62,36 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   
   // Initialize sync with extension
   const { initializeSync } = useSync();
+
+  // Function to sync data with extension
+  const syncWithExtension = useCallback(async (dataType: 'contacts' | 'tags' | 'templates', data: any[]) => {
+    try {
+      const { extensionSyncService } = await import('@/lib/extension-service');
+      const isConnected = await extensionSyncService.isExtensionConnected();
+      
+      if (isConnected) {
+        console.log(`[AppState] Syncing ${dataType} with extension:`, data.length, 'items');
+        
+        switch (dataType) {
+          case 'contacts':
+            await extensionSyncService.syncContacts(data);
+            break;
+          case 'tags':
+            await extensionSyncService.syncTags(data);
+            break;
+          case 'templates':
+            await extensionSyncService.syncTemplates(data);
+            break;
+        }
+        
+        console.log(`[AppState] Successfully synced ${dataType} with extension`);
+      } else {
+        console.log(`[AppState] Extension not connected, skipping ${dataType} sync`);
+      }
+    } catch (error) {
+      console.error(`[AppState] Failed to sync ${dataType} with extension:`, error);
+    }
+  }, []);
 
   useEffect(() => {
     const handleOnline = () => setIsOnline(true);
@@ -160,6 +190,25 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
       );
     }
   }, [contacts, tags.length]);
+
+  // Sync data with extension whenever it changes
+  useEffect(() => {
+    if (contacts.length > 0) {
+      syncWithExtension('contacts', contacts);
+    }
+  }, [contacts, syncWithExtension]);
+
+  useEffect(() => {
+    if (tags.length > 0) {
+      syncWithExtension('tags', tags);
+    }
+  }, [tags, syncWithExtension]);
+
+  useEffect(() => {
+    if (templates.length > 0) {
+      syncWithExtension('templates', templates);
+    }
+  }, [templates, syncWithExtension]);
 
 
   const toggleGenericSelection = (
