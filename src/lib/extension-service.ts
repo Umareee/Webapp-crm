@@ -60,7 +60,7 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
       isSafari,
       browserName,
       isChromeBasedBrowser: isChrome || isEdge || isBrave,
-      hasExtensionSupport: !!window.chrome?.runtime,
+      hasExtensionSupport: !!(window as any).chrome?.runtime,
       userAgent
     };
   }
@@ -83,9 +83,9 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
       });
 
       // Also try chrome.runtime if available (for externally_connectable)
-      if (window.chrome?.runtime?.onMessage?.addListener) {
+      if ((window as any).chrome?.runtime?.onMessage?.addListener) {
         try {
-          window.chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+          (window as any).chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             if (message.type?.startsWith('SYNC_')) {
               this.messageListeners.forEach(listener => {
                 listener({
@@ -143,16 +143,16 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
       console.log('[Extension Service] Sending PING to extension:', this.extensionId);
       
       // Method 1: Try chrome.runtime.sendMessage (requires externally_connectable)
-      if (window.chrome?.runtime?.sendMessage) {
+      if ((window as any).chrome?.runtime?.sendMessage) {
         try {
-          window.chrome.runtime.sendMessage(
+          (window as any).chrome.runtime.sendMessage(
             this.extensionId,
             { type: 'PING' },
             (response) => {
               clearTimeout(timeout);
               
-              if (window.chrome?.runtime?.lastError) {
-                const error = window.chrome.runtime.lastError.message;
+              if ((window as any).chrome?.runtime?.lastError) {
+                const error = (window as any).chrome.runtime.lastError.message;
                 console.log('[Extension Service] PING error:', error);
                 
                 if (error.includes('Could not establish connection')) {
@@ -200,6 +200,7 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
           document.querySelector('.crm-check'),
           document.querySelector('.groups-crm-checkbox'),
           document.querySelector('[data-crm-extension]'),
+          document.querySelector('#crm-extension-marker'),
         ].filter(Boolean);
         
         if (extensionElements.length > 0) {
@@ -331,21 +332,21 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
   async syncContacts(contacts: any[]): Promise<void> {
     if (!await this.isExtensionConnected()) return;
 
-    if (!window.chrome?.runtime?.sendMessage) {
+    if (!(window as any).chrome?.runtime?.sendMessage) {
       console.log('[Extension Service] chrome.runtime.sendMessage not available for sync');
       return;
     }
 
     return new Promise((resolve, reject) => {
-      window.chrome.runtime.sendMessage(
+      (window as any).chrome.runtime.sendMessage(
         this.extensionId,
         {
           type: 'SYNC_CONTACTS_TO_EXTENSION',
           payload: { contacts }
         },
         (response) => {
-          if (window.chrome?.runtime?.lastError) {
-            reject(window.chrome.runtime.lastError);
+          if ((window as any).chrome?.runtime?.lastError) {
+            reject((window as any).chrome.runtime.lastError);
           } else {
             resolve();
           }
@@ -357,21 +358,21 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
   async syncTags(tags: any[]): Promise<void> {
     if (!await this.isExtensionConnected()) return;
 
-    if (!window.chrome?.runtime?.sendMessage) {
+    if (!(window as any).chrome?.runtime?.sendMessage) {
       console.log('[Extension Service] chrome.runtime.sendMessage not available for sync');
       return;
     }
 
     return new Promise((resolve, reject) => {
-      window.chrome.runtime.sendMessage(
+      (window as any).chrome.runtime.sendMessage(
         this.extensionId,
         {
           type: 'SYNC_TAGS_TO_EXTENSION',
           payload: { tags }
         },
         (response) => {
-          if (window.chrome?.runtime?.lastError) {
-            reject(window.chrome.runtime.lastError);
+          if ((window as any).chrome?.runtime?.lastError) {
+            reject((window as any).chrome.runtime.lastError);
           } else {
             resolve();
           }
@@ -383,21 +384,21 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
   async syncTemplates(templates: any[]): Promise<void> {
     if (!await this.isExtensionConnected()) return;
 
-    if (!window.chrome?.runtime?.sendMessage) {
+    if (!(window as any).chrome?.runtime?.sendMessage) {
       console.log('[Extension Service] chrome.runtime.sendMessage not available for sync');
       return;
     }
 
     return new Promise((resolve, reject) => {
-      window.chrome.runtime.sendMessage(
+      (window as any).chrome.runtime.sendMessage(
         this.extensionId,
         {
           type: 'SYNC_TEMPLATES_TO_EXTENSION',
           payload: { templates }
         },
         (response) => {
-          if (window.chrome?.runtime?.lastError) {
-            reject(window.chrome.runtime.lastError);
+          if ((window as any).chrome?.runtime?.lastError) {
+            reject((window as any).chrome.runtime.lastError);
           } else {
             resolve();
           }
@@ -418,7 +419,7 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
   async getExtensionData(type: 'contacts' | 'tags' | 'templates'): Promise<any> {
     if (!await this.isExtensionConnected()) return null;
 
-    if (!window.chrome?.runtime?.sendMessage) {
+    if (!(window as any).chrome?.runtime?.sendMessage) {
       console.log('[Extension Service] chrome.runtime.sendMessage not available for getting data');
       return null;
     }
@@ -426,15 +427,15 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => reject(new Error('Timeout')), 5000);
       
-      window.chrome.runtime.sendMessage(
+      (window as any).chrome.runtime.sendMessage(
         this.extensionId,
         {
           type: `GET_${type.toUpperCase()}_FROM_EXTENSION`
         },
         (response) => {
           clearTimeout(timeout);
-          if (window.chrome?.runtime?.lastError) {
-            reject(window.chrome.runtime.lastError);
+          if ((window as any).chrome?.runtime?.lastError) {
+            reject((window as any).chrome.runtime.lastError);
           } else {
             resolve(response?.payload);
           }
