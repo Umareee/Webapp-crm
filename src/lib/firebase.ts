@@ -159,6 +159,77 @@ export const changeContactTags = async (uid: string, contactIds: string[], tagId
     await batch.commit();
 }
 
+export const addContact = async (uid: string, contactData: Omit<Contact, 'id'>, contactId?: string) => {
+  const id = contactId || doc(collection(db, `users/${uid}/contacts`)).id;
+  const contactRef = doc(db, `users/${uid}/contacts`, id);
+  await setDoc(contactRef, { 
+    ...contactData, 
+    createdAt: serverTimestamp(),
+    updatedAt: serverTimestamp() 
+  }, { merge: true });
+  return id;
+};
+
+export const updateContact = async (uid: string, contactId: string, contactData: Partial<Contact>) => {
+  const contactRef = doc(db, `users/${uid}/contacts`, contactId);
+  await updateDoc(contactRef, {
+    ...contactData,
+    updatedAt: serverTimestamp()
+  });
+};
+
+export const syncContactsFromExtension = async (uid: string, extensionContacts: Contact[]) => {
+  const batch = writeBatch(db);
+  
+  extensionContacts.forEach(contact => {
+    const contactRef = doc(db, `users/${uid}/contacts`, contact.id);
+    batch.set(contactRef, {
+      name: contact.name,
+      userId: contact.userId,
+      profilePicture: contact.profilePicture,
+      source: contact.source,
+      groupId: contact.groupId,
+      tags: contact.tags,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  });
+  
+  await batch.commit();
+};
+
+export const syncTagsFromExtension = async (uid: string, extensionTags: any[]) => {
+  const batch = writeBatch(db);
+  
+  extensionTags.forEach(tag => {
+    const tagRef = doc(db, `users/${uid}/tags`, tag.id);
+    batch.set(tagRef, {
+      name: tag.name,
+      color: tag.color,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  });
+  
+  await batch.commit();
+};
+
+export const syncTemplatesFromExtension = async (uid: string, extensionTemplates: any[]) => {
+  const batch = writeBatch(db);
+  
+  extensionTemplates.forEach(template => {
+    const templateRef = doc(db, `users/${uid}/templates`, template.id);
+    batch.set(templateRef, {
+      name: template.name,
+      body: template.body,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp()
+    }, { merge: true });
+  });
+  
+  await batch.commit();
+};
+
 
 export const addTemplate = async (uid: string, templateData: TemplateData, templateId?: string) => {
   const id = templateId || doc(collection(db, `users/${uid}/templates`)).id;

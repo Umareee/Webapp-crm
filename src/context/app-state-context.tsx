@@ -239,12 +239,16 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     
     try {
       console.log('[AppState] Syncing tags from extension to Firebase:', extensionTags.length);
-      // TODO: Implement Firebase sync for tags from extension
-      // This would involve comparing extension tags with Firebase tags
-      // and updating Firebase with any changes
-      console.log('[AppState] Tag sync from extension - implementation needed');
+      
+      // Import Firebase sync function dynamically to avoid SSR issues
+      const { syncTagsFromExtension } = await import('@/lib/firebase');
+      
+      // Sync all extension tags to Firebase
+      await syncTagsFromExtension(user.uid, extensionTags);
+      
+      console.log('[AppState] ✅ Tags synced from extension to Firebase successfully');
     } catch (error) {
-      console.error('[AppState] Failed to sync tags from extension:', error);
+      console.error('[AppState] ❌ Failed to sync tags from extension:', error);
     }
   };
 
@@ -253,12 +257,16 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     
     try {
       console.log('[AppState] Syncing contacts from extension to Firebase:', extensionContacts.length);
-      // TODO: Implement Firebase sync for contacts from extension
-      // This would involve comparing extension contacts with Firebase contacts
-      // and updating Firebase with any changes
-      console.log('[AppState] Contact sync from extension - implementation needed');
+      
+      // Import Firebase sync function dynamically to avoid SSR issues
+      const { syncContactsFromExtension } = await import('@/lib/firebase');
+      
+      // Sync all extension contacts to Firebase
+      await syncContactsFromExtension(user.uid, extensionContacts);
+      
+      console.log('[AppState] ✅ Contacts synced from extension to Firebase successfully');
     } catch (error) {
-      console.error('[AppState] Failed to sync contacts from extension:', error);
+      console.error('[AppState] ❌ Failed to sync contacts from extension:', error);
     }
   };
 
@@ -267,12 +275,16 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     
     try {
       console.log('[AppState] Syncing templates from extension to Firebase:', extensionTemplates.length);
-      // TODO: Implement Firebase sync for templates from extension
-      // This would involve comparing extension templates with Firebase templates
-      // and updating Firebase with any changes
-      console.log('[AppState] Template sync from extension - implementation needed');
+      
+      // Import Firebase sync function dynamically to avoid SSR issues
+      const { syncTemplatesFromExtension } = await import('@/lib/firebase');
+      
+      // Sync all extension templates to Firebase
+      await syncTemplatesFromExtension(user.uid, extensionTemplates);
+      
+      console.log('[AppState] ✅ Templates synced from extension to Firebase successfully');
     } catch (error) {
-      console.error('[AppState] Failed to sync templates from extension:', error);
+      console.error('[AppState] ❌ Failed to sync templates from extension:', error);
     }
   };
 
