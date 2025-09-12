@@ -269,6 +269,14 @@ export function SimpleBulkSend() {
                   type="button"
                   variant="outline"
                   size="sm"
+                  onClick={() => insertVariable('{last_name}')}
+                >
+                  Last Name
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
                   onClick={() => insertVariable('{full_name}')}
                 >
                   Full Name

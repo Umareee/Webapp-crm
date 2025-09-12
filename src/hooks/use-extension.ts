@@ -56,6 +56,10 @@ interface BulkSendProgress {
   successCount: number;   // Number of messages sent successfully
   failureCount: number;   // Number of messages that failed to send
   startTime: number | null; // Unix timestamp when campaign started
+  currentContact?: {      // Contact currently being processed (optional)
+    id: string;
+    name: string;
+  };
 }
 
 /* ===============================
