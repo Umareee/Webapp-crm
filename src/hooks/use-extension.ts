@@ -107,7 +107,7 @@ const isChromeAvailable = (): boolean => {
  * @returns true if Chrome messaging APIs are available and functional
  */
 const isChromeMessagingAvailable = (): boolean => {
-  console.log('[Extension Hook] Checking Chrome messaging availability...');
+  console.log('[Extension Hook] Checking Chrome messaging availability v2...');
   
   // First check if basic Chrome APIs are available
   if (!isChromeAvailable()) {
@@ -118,17 +118,15 @@ const isChromeMessagingAvailable = (): boolean => {
   const chrome = (window as any).chrome;
   
   // Debug: Log what we have
-  console.log('[Extension Hook] chrome object:', chrome);
-  console.log('[Extension Hook] chrome.runtime:', chrome?.runtime);
   console.log('[Extension Hook] chrome.runtime.sendMessage type:', typeof chrome?.runtime?.sendMessage);
   
   // Check if sendMessage function exists (this is all we need for webapp to extension communication)
-  if (typeof chrome.runtime.sendMessage !== 'function') {
+  if (typeof chrome?.runtime?.sendMessage !== 'function') {
     console.log('[Extension Hook] chrome.runtime.sendMessage is not a function');
     return false;
   }
   
-  console.log('[Extension Hook] Chrome messaging API is available');
+  console.log('[Extension Hook] Chrome messaging API is available ✅');
   return true;
 };
 
@@ -270,7 +268,7 @@ export const useExtension = () => {
 
   // Send bulk campaign to extension
   const sendBulkCampaign = useCallback(async (payload: BulkSendPayload) => {
-    console.log('[Extension Hook] Starting bulk campaign with payload:', {
+    console.log('[Extension Hook] 🚀 Starting bulk campaign v2 with payload:', {
       recipientCount: payload.recipients.length,
       messagePreview: payload.message.substring(0, 50) + '...',
       delay: payload.delay
