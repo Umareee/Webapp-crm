@@ -463,17 +463,20 @@ export const useExtension = () => {
 
   // Start polling when bulk send begins
   useEffect(() => {
-    if (bulkSendProgress?.isActive) {
+    if (typeof window !== 'undefined' && bulkSendProgress?.isActive) {
       const cleanup = pollProgress();
       return cleanup;
     }
   }, [bulkSendProgress?.isActive, pollProgress]);
 
   useEffect(() => {
-    checkExtensionStatus();
-    // Recheck periodically
-    const interval = setInterval(checkExtensionStatus, 5000);
-    return () => clearInterval(interval);
+    // Only run in browser environment
+    if (typeof window !== 'undefined') {
+      checkExtensionStatus();
+      // Recheck periodically
+      const interval = setInterval(checkExtensionStatus, 5000);
+      return () => clearInterval(interval);
+    }
   }, [checkExtensionStatus]);
 
   return {

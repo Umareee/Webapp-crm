@@ -42,6 +42,25 @@ export function SimpleBulkSend() {
     setIsClient(true);
   }, []);
 
+  // Track bulk send completion
+  const [lastProgressState, setLastProgressState] = useState<typeof bulkSendProgress>(null);
+  
+  useEffect(() => {
+    // Check if bulk send just completed (was active, now inactive/null)
+    if (lastProgressState?.isActive && (!bulkSendProgress || !bulkSendProgress.isActive)) {
+      const finalStats = lastProgressState;
+      setTimeout(() => {
+        toast({
+          title: finalStats.successCount === finalStats.totalCount ? '🎉 Bulk Send Completed!' : '📊 Bulk Send Finished',
+          description: `Campaign finished. Successfully sent: ${finalStats.successCount}, Failed: ${finalStats.failureCount} out of ${finalStats.totalCount} total messages.`,
+          variant: finalStats.successCount === finalStats.totalCount ? 'default' : 'destructive',
+        });
+      }, 500); // Small delay to ensure UI updates
+    }
+    
+    setLastProgressState(bulkSendProgress);
+  }, [bulkSendProgress, lastProgressState, toast]);
+
   // Form state
   const [formData, setFormData] = useState({
     selectedTagIds: [] as string[],
@@ -197,11 +216,27 @@ export function SimpleBulkSend() {
   // Handle cancel
   const handleCancel = async () => {
     try {
+      const wasActive = bulkSendProgress?.isActive;
+      const currentStats = bulkSendProgress ? {
+        sent: bulkSendProgress.successCount,
+        failed: bulkSendProgress.failureCount,
+        total: bulkSendProgress.totalCount
+      } : null;
+
       await cancelBulkSend();
-      toast({
-        title: 'Bulk Send Cancelled',
-        description: 'The bulk send operation has been cancelled.',
-      });
+      
+      if (wasActive && currentStats) {
+        toast({
+          title: '⛔ Bulk Send Cancelled',
+          description: `Campaign stopped. Sent: ${currentStats.sent}, Failed: ${currentStats.failed} out of ${currentStats.total} total.`,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Bulk Send Cancelled',
+          description: 'The bulk send operation has been cancelled.',
+        });
+      }
     } catch (error: any) {
       toast({
         title: 'Error',
@@ -374,40 +409,80 @@ export function SimpleBulkSend() {
           {bulkSendProgress && (
             <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/50">
               <CardContent className="p-4">
-                <div className="space-y-3">
+                <div className="space-y-4">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-medium text-blue-900 dark:text-blue-100">Bulk Send in Progress</h4>
-                    <span className="text-sm text-blue-700 dark:text-blue-300">
-                      {bulkSendProgress.currentIndex} / {bulkSendProgress.totalCount}
-                    </span>
+                    <h4 className="font-medium text-blue-900 dark:text-blue-100">
+                      🚀 Bulk Send in Progress
+                    </h4>
+                    <div className="text-right">
+                      <div className="text-sm text-blue-700 dark:text-blue-300">
+                        {bulkSendProgress.currentIndex} / {bulkSendProgress.totalCount}
+                      </div>
+                      <div className="text-xs text-blue-600 dark:text-blue-400">
+                        {progressPercent}% Complete
+                      </div>
+                    </div>
                   </div>
                   
                   <Progress 
                     value={progressPercent} 
-                    className="w-full h-3 bg-blue-100 dark:bg-blue-900" 
+                    className="w-full h-4 bg-blue-100 dark:bg-blue-900" 
                   />
                   
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
-                      <span className="text-green-700 dark:text-green-400 font-medium">
-                        Sent: {bulkSendProgress.successCount}
-                      </span>
+                  <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div className="text-center p-3 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                      <div className="flex items-center justify-center gap-2 mb-1">
+                        <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+                        <span className="font-semibold text-green-800 dark:text-green-300">
+                          Sent
+                        </span>
+                      </div>
+                      <div className="text-xl font-bold text-green-700 dark:text-green-400">
+                        {bulkSendProgress.successCount}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <div className="w-3 h-3 bg-red-500 rounded-full" />
-                      <span className="text-red-700 dark:text-red-400 font-medium">
-                        Failed: {bulkSendProgress.failureCount}
-                      </span>
+                    
+                    <div className="text-center p-3 bg-red-100 dark:bg-red-900/30 rounded-lg">
+                      <div className="flex items-center justify-center gap-2 mb-1">
+                        <div className="w-3 h-3 bg-red-500 rounded-full" />
+                        <span className="font-semibold text-red-800 dark:text-red-300">
+                          Failed
+                        </span>
+                      </div>
+                      <div className="text-xl font-bold text-red-700 dark:text-red-400">
+                        {bulkSendProgress.failureCount}
+                      </div>
+                    </div>
+                    
+                    <div className="text-center p-3 bg-gray-100 dark:bg-gray-800 rounded-lg">
+                      <div className="flex items-center justify-center gap-2 mb-1">
+                        <div className="w-3 h-3 bg-gray-500 rounded-full" />
+                        <span className="font-semibold text-gray-800 dark:text-gray-300">
+                          Remaining
+                        </span>
+                      </div>
+                      <div className="text-xl font-bold text-gray-700 dark:text-gray-400">
+                        {bulkSendProgress.totalCount - bulkSendProgress.currentIndex}
+                      </div>
                     </div>
                   </div>
 
                   {/* Show current contact if available */}
                   {bulkSendProgress.currentContact && (
-                    <div className="pt-2 border-t border-blue-200 dark:border-blue-800">
-                      <p className="text-xs text-blue-700 dark:text-blue-300">
-                        Currently messaging: <span className="font-medium">{bulkSendProgress.currentContact.name}</span>
-                      </p>
+                    <div className="p-3 bg-blue-100 dark:bg-blue-800/30 rounded-lg border-l-4 border-blue-500">
+                      <div className="flex items-center gap-2">
+                        <div className="animate-pulse w-2 h-2 bg-blue-500 rounded-full"></div>
+                        <p className="text-sm text-blue-800 dark:text-blue-200">
+                          Currently messaging: <span className="font-semibold">{bulkSendProgress.currentContact.name}</span>
+                        </p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Time elapsed */}
+                  {bulkSendProgress.startTime && (
+                    <div className="text-center text-xs text-blue-600 dark:text-blue-400">
+                      ⏱️ Running for {Math.round((Date.now() - bulkSendProgress.startTime) / 1000)}s
                     </div>
                   )}
                 </div>
@@ -418,30 +493,38 @@ export function SimpleBulkSend() {
           {/* Action Buttons */}
           <div className="flex gap-3">
             {bulkSendProgress ? (
-              <Button 
-                onClick={handleCancel} 
-                variant="destructive" 
-                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
-                size="lg"
-              >
-                <Square className="h-4 w-4 mr-2" />
-                Cancel Bulk Send
-              </Button>
+              <div className="flex flex-col sm:flex-row gap-3 w-full">
+                <Button 
+                  onClick={handleCancel} 
+                  variant="destructive" 
+                  className="flex-1 bg-red-600 hover:bg-red-700 text-white shadow-lg hover:shadow-xl transition-all duration-200"
+                  size="lg"
+                >
+                  <Square className="h-5 w-5 mr-2" />
+                  ⛔ Cancel Bulk Send
+                </Button>
+                <div className="flex items-center justify-center px-4 py-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg text-sm text-blue-700 dark:text-blue-300">
+                  <div className="animate-spin h-4 w-4 mr-2 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+                  Campaign Running...
+                </div>
+              </div>
             ) : (
               <Button 
                 onClick={handleBulkSend}
                 disabled={sending || validRecipients.length === 0}
-                className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-400 disabled:text-gray-200"
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-400 disabled:text-gray-200 shadow-lg hover:shadow-xl transition-all duration-200"
                 size="lg"
               >
-                <Play className="h-4 w-4 mr-2" />
                 {sending ? (
                   <>
-                    <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full" />
-                    Starting...
+                    <div className="animate-spin h-5 w-5 mr-2 border-2 border-white border-t-transparent rounded-full" />
+                    🚀 Starting Campaign...
                   </>
                 ) : (
-                  `Send to ${validRecipients.length} Recipients`
+                  <>
+                    <Play className="h-5 w-5 mr-2" />
+                    📤 Send to {validRecipients.length} Recipients
+                  </>
                 )}
               </Button>
             )}
