@@ -239,11 +239,19 @@ export function CampaignManager({ onEditCampaign, onCreateCampaign }: CampaignMa
   };
 
   // Format campaign tags
-  const formatCampaignTags = (tagIds: string[]) => {
+  const formatCampaignTags = (tagIds: string[] | undefined) => {
+    if (!tagIds || !Array.isArray(tagIds) || tagIds.length === 0) {
+      return 'No tags selected';
+    }
+    
+    if (!tags || !Array.isArray(tags)) {
+      return 'Tags not loaded';
+    }
+    
     return tagIds
       .map(tagId => tags.find(tag => tag.id === tagId)?.name)
       .filter(Boolean)
-      .join(', ');
+      .join(', ') || 'No tags found';
   };
 
   if (loading) {
@@ -336,7 +344,7 @@ export function CampaignManager({ onEditCampaign, onCreateCampaign }: CampaignMa
       {/* Campaigns Table */}
       <Card>
         <CardContent className="p-0">
-          {campaigns.length === 0 ? (
+          {(campaigns || []).length === 0 ? (
             <div className="p-8 text-center">
               <MessageCircle className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
               <h3 className="text-lg font-medium mb-2">No campaigns yet</h3>
@@ -356,10 +364,10 @@ export function CampaignManager({ onEditCampaign, onCreateCampaign }: CampaignMa
                   <TableHead className="w-4">
                     <input
                       type="checkbox"
-                      checked={selectedCampaignIds.length === campaigns.length}
+                      checked={selectedCampaignIds.length === (campaigns || []).length}
                       onChange={(e) => {
                         if (e.target.checked) {
-                          setSelectedCampaignIds(campaigns.map(c => c.id));
+                          setSelectedCampaignIds((campaigns || []).map(c => c.id));
                         } else {
                           setSelectedCampaignIds([]);
                         }
@@ -375,7 +383,7 @@ export function CampaignManager({ onEditCampaign, onCreateCampaign }: CampaignMa
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {campaigns.map((campaign) => (
+                {(campaigns || []).map((campaign) => (
                   <TableRow key={campaign.id}>
                     <TableCell>
                       <input
