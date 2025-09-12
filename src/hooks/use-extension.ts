@@ -117,6 +117,11 @@ const isChromeMessagingAvailable = (): boolean => {
   
   const chrome = (window as any).chrome;
   
+  // Debug: Log what we have
+  console.log('[Extension Hook] chrome object:', chrome);
+  console.log('[Extension Hook] chrome.runtime:', chrome?.runtime);
+  console.log('[Extension Hook] chrome.runtime.sendMessage type:', typeof chrome?.runtime?.sendMessage);
+  
   // Check if sendMessage function exists (this is all we need for webapp to extension communication)
   if (typeof chrome.runtime.sendMessage !== 'function') {
     console.log('[Extension Hook] chrome.runtime.sendMessage is not a function');
@@ -133,6 +138,9 @@ const isChromeMessagingAvailable = (): boolean => {
  */
 (window as any).testExtensionConnection = async () => {
   console.log('[Extension Hook] === EXTENSION CONNECTION TEST ===');
+  
+  console.log('Current URL:', window.location.href);
+  console.log('Extension ID being used:', EXTENSION_ID);
   
   console.log('1. Checking Chrome availability...', isChromeAvailable());
   console.log('2. Checking Chrome messaging...', isChromeMessagingAvailable());
@@ -174,6 +182,14 @@ const isChromeMessagingAvailable = (): boolean => {
     console.log('❌ Extension test error:', error);
     return false;
   }
+};
+
+// Also add a helper to check what extensions are installed
+(window as any).listChromeExtensions = () => {
+  console.log('Chrome object:', (window as any).chrome);
+  console.log('Chrome runtime:', (window as any).chrome?.runtime);
+  console.log('Chrome runtime ID:', (window as any).chrome?.runtime?.id);
+  console.log('Extension ID in use:', EXTENSION_ID);
 };
 
 export const useExtension = () => {
@@ -263,9 +279,12 @@ export const useExtension = () => {
     console.log('[Extension Hook] Current extension status:', status);
 
     // Check Chrome messaging availability first
-    if (!isChromeMessagingAvailable()) {
+    const messagingAvailable = isChromeMessagingAvailable();
+    console.log('[Extension Hook] Messaging availability check result:', messagingAvailable);
+    
+    if (!messagingAvailable) {
       console.error('[Extension Hook] Chrome messaging not available');
-      throw new Error('Chrome extension messaging not available. Please use a Chromium-based browser.');
+      throw new Error('Extension not installed or messaging not available. Please install the Chrome extension to send bulk messages.');
     }
 
     // For bulk send, we need to ensure we can communicate with the extension
