@@ -17,7 +17,7 @@ const navItems = [
   { view: 'tags' as const, label: 'Tags', icon: Tag, href: '/' },
   { view: 'templates' as const, label: 'Templates', icon: FileText, href: '/' },
   { view: 'contacts' as const, label: 'Contacts', icon: Users, href: '/' },
-  { view: 'bulk' as const, label: 'Bulk Campaign', icon: Send, href: '/bulk' },
+  { view: 'bulk' as const, label: 'Bulk Send', icon: Send, href: '/bulk' },
 ];
 
 const separateItems = [
