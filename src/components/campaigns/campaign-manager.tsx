@@ -212,12 +212,12 @@ export function CampaignManager({ onEditCampaign, onCreateCampaign }: CampaignMa
   // Get status badge for campaign
   const getStatusBadge = (status: Campaign['status']) => {
     const variants: Record<Campaign['status'], { variant: any; icon: any; color: string }> = {
-      pending: { variant: 'secondary', icon: Clock, color: 'text-gray-500' },
-      'in-progress': { variant: 'default', icon: Loader2, color: 'text-blue-500' },
-      paused: { variant: 'secondary', icon: Pause, color: 'text-yellow-500' },
-      completed: { variant: 'success', icon: CheckCircle, color: 'text-green-500' },
-      failed: { variant: 'destructive', icon: XCircle, color: 'text-red-500' },
-      cancelled: { variant: 'outline', icon: AlertCircle, color: 'text-gray-500' },
+      pending: { variant: 'secondary', icon: Clock, color: 'text-orange-600' },
+      'in-progress': { variant: 'default', icon: Loader2, color: 'text-white' },
+      paused: { variant: 'outline', icon: Pause, color: 'text-yellow-600' },
+      completed: { variant: 'success', icon: CheckCircle, color: 'text-green-800' },
+      failed: { variant: 'destructive', icon: XCircle, color: 'text-white' },
+      cancelled: { variant: 'outline', icon: AlertCircle, color: 'text-gray-600' },
     };
 
     const { variant, icon: Icon, color } = variants[status];

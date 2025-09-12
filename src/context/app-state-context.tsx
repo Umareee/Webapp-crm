@@ -1,4 +1,24 @@
 
+/**
+ * Application State Context
+ * 
+ * This file provides centralized state management for the Messenger CRM application.
+ * It manages authentication, data synchronization, and UI state across all components.
+ * 
+ * Key Responsibilities:
+ * - Firebase authentication state management
+ * - Real-time Firestore data synchronization (contacts, tags, templates, campaigns)
+ * - Browser extension synchronization
+ * - UI state management (active view, selections, search)
+ * - Online/offline status tracking
+ * 
+ * Data Flow:
+ * 1. User authentication via Firebase Auth
+ * 2. Real-time data sync from Firestore collections
+ * 3. Bidirectional sync with browser extension
+ * 4. State updates propagated to all consuming components
+ */
+
 "use client";
 
 import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
@@ -9,27 +29,45 @@ import { auth, db } from '@/lib/firebase';
 import type { ActiveView, Tag, Contact, Template, Campaign, SelectionMode } from '@/lib/types';
 import { useSync } from '@/hooks/use-sync';
 
+/**
+ * AppState Interface
+ * 
+ * Defines the complete application state structure and methods available to components
+ */
 interface AppState {
-  user: User | null;
-  authLoading: boolean;
-  isLoading: boolean;
-  isOnline: boolean;
-  activeView: ActiveView;
-  selectedTagId: string | null;
-  searchQuery: string;
-  tags: Tag[];
-  contacts: Contact[];
-  templates: Template[];
-  campaigns: Campaign[];
-  activeCampaigns: Campaign[];
+  // Authentication state
+  user: User | null;                    // Current authenticated Firebase user
+  authLoading: boolean;                 // True while Firebase auth is initializing
+  
+  // Data loading and connectivity state
+  isLoading: boolean;                   // True while Firestore data is loading
+  isOnline: boolean;                    // Browser online/offline status
+  
+  // UI navigation state
+  activeView: ActiveView;               // Currently selected view (dashboard, tags, etc.)
+  selectedTagId: string | null;         // Selected tag for filtering contacts
+  searchQuery: string;                  // Current search query text
+  
+  // Core data collections
+  tags: Tag[];                          // Contact categorization tags
+  contacts: Contact[];                  // Messenger contacts from extension
+  templates: Template[];                // Message templates for bulk sending
+  campaigns: Campaign[];                // All campaigns (completed and active)
+  activeCampaigns: Campaign[];          // Currently running campaigns only
+  
+  // Navigation methods
   setActiveView: (view: ActiveView) => void;
   setSelectedTagId: (id: string | null) => void;
   setSearchQuery: (query: string) => void;
-  selectionMode: SelectionMode;
+  
+  // Selection state for bulk operations
+  selectionMode: SelectionMode;         // Current selection type (tag/template/contact)
   setSelectionMode: (mode: SelectionMode) => void;
-  selectedTagIds: string[];
-  selectedTemplateIds: string[];
-  selectedContactIds: string[];
+  selectedTagIds: string[];             // Selected tags for bulk operations
+  selectedTemplateIds: string[];        // Selected templates for bulk operations
+  selectedContactIds: string[];         // Selected contacts for bulk operations
+  
+  // Selection management methods
   toggleTagSelection: (id: string, force?: boolean | 'toggle') => void;
   toggleTemplateSelection: (id: string, force?: boolean | 'toggle') => void;
   toggleContactSelection: (id: string, force?: boolean | 'toggle') => void;

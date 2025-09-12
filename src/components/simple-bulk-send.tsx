@@ -136,20 +136,34 @@ export function SimpleBulkSend() {
 
     setSending(true);
     try {
-      await sendBulkCampaign({
-        recipients: validRecipients,
+      console.log('[Bulk Send] Starting bulk send with recipients:', validRecipients.length);
+      
+      const result = await sendBulkCampaign({
+        recipients: validRecipients.map(contact => ({
+          id: contact.id,
+          name: contact.name,
+          userId: contact.userId,
+          source: (contact.source || 'messenger') as 'messenger' | 'facebook_group'
+        })),
         message: formData.message.trim(),
         delay: formData.delay,
       });
 
+      console.log('[Bulk Send] Result:', result);
+
       toast({
         title: 'Bulk Send Started',
-        description: `Sending messages to ${validRecipients.length} recipients.`,
+        description: result.message || `Sending messages to ${validRecipients.length} recipients.`,
       });
+
+      // Clear form after successful start
+      setFormData(prev => ({ ...prev, message: '', selectedTemplateId: '' }));
+      
     } catch (error: any) {
+      console.error('[Bulk Send] Error:', error);
       toast({
-        title: 'Error',
-        description: error.message || 'Failed to start bulk send.',
+        title: 'Error Starting Bulk Send',
+        description: error.message || 'Failed to start bulk send. Please check that the extension is installed and active.',
         variant: 'destructive',
       });
     } finally {
@@ -288,12 +302,12 @@ export function SimpleBulkSend() {
 
           {/* Recipients Preview */}
           {validRecipients.length > 0 && (
-            <div className="p-4 bg-blue-50 rounded-lg">
-              <div className="flex items-center gap-2 text-sm">
+            <div className="p-4 bg-green-50 border border-green-200 rounded-lg dark:bg-green-950/50 dark:border-green-800">
+              <div className="flex items-center gap-2 text-sm text-green-800 dark:text-green-200">
                 <Users className="h-4 w-4" />
-                <span>{validRecipients.length} recipients selected</span>
+                <span className="font-medium">{validRecipients.length} recipients selected</span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-muted-foreground mt-1">
+              <div className="flex items-center gap-2 text-sm text-green-700 dark:text-green-300 mt-1">
                 <Clock className="h-4 w-4" />
                 <span>
                   Estimated duration: ~{Math.ceil((validRecipients.length * formData.delay) / 60)} minutes
@@ -304,28 +318,44 @@ export function SimpleBulkSend() {
 
           {/* Progress Display */}
           {bulkSendProgress && (
-            <Card className="border-blue-200">
+            <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/50">
               <CardContent className="p-4">
                 <div className="space-y-3">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-medium">Bulk Send in Progress</h4>
-                    <span className="text-sm text-muted-foreground">
+                    <h4 className="font-medium text-blue-900 dark:text-blue-100">Bulk Send in Progress</h4>
+                    <span className="text-sm text-blue-700 dark:text-blue-300">
                       {bulkSendProgress.currentIndex} / {bulkSendProgress.totalCount}
                     </span>
                   </div>
                   
-                  <Progress value={progressPercent} className="w-full" />
+                  <Progress 
+                    value={progressPercent} 
+                    className="w-full h-3 bg-blue-100 dark:bg-blue-900" 
+                  />
                   
                   <div className="grid grid-cols-2 gap-4 text-sm">
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full" />
-                      <span>Sent: {bulkSendProgress.successCount}</span>
+                      <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse" />
+                      <span className="text-green-700 dark:text-green-400 font-medium">
+                        Sent: {bulkSendProgress.successCount}
+                      </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 bg-red-500 rounded-full" />
-                      <span>Failed: {bulkSendProgress.failureCount}</span>
+                      <div className="w-3 h-3 bg-red-500 rounded-full" />
+                      <span className="text-red-700 dark:text-red-400 font-medium">
+                        Failed: {bulkSendProgress.failureCount}
+                      </span>
                     </div>
                   </div>
+
+                  {/* Show current contact if available */}
+                  {bulkSendProgress.currentContact && (
+                    <div className="pt-2 border-t border-blue-200 dark:border-blue-800">
+                      <p className="text-xs text-blue-700 dark:text-blue-300">
+                        Currently messaging: <span className="font-medium">{bulkSendProgress.currentContact.name}</span>
+                      </p>
+                    </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -334,7 +364,12 @@ export function SimpleBulkSend() {
           {/* Action Buttons */}
           <div className="flex gap-3">
             {bulkSendProgress ? (
-              <Button onClick={handleCancel} variant="destructive" className="flex-1">
+              <Button 
+                onClick={handleCancel} 
+                variant="destructive" 
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
+                size="lg"
+              >
                 <Square className="h-4 w-4 mr-2" />
                 Cancel Bulk Send
               </Button>
@@ -342,11 +377,18 @@ export function SimpleBulkSend() {
               <Button 
                 onClick={handleBulkSend}
                 disabled={sending || validRecipients.length === 0}
-                className="flex-1"
+                className="flex-1 bg-green-600 hover:bg-green-700 text-white disabled:bg-gray-400 disabled:text-gray-200"
                 size="lg"
               >
                 <Play className="h-4 w-4 mr-2" />
-                {sending ? 'Starting...' : `Send to ${validRecipients.length} Recipients`}
+                {sending ? (
+                  <>
+                    <div className="animate-spin h-4 w-4 mr-2 border-2 border-white border-t-transparent rounded-full" />
+                    Starting...
+                  </>
+                ) : (
+                  `Send to ${validRecipients.length} Recipients`
+                )}
               </Button>
             )}
           </div>
