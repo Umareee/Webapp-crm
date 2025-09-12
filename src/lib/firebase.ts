@@ -439,6 +439,13 @@ const triggerExtensionCampaign = async (uid: string, campaignId: string) => {
       throw new Error(detailedError);
     }
 
+    console.log('🚀 Sending BULK_SEND message to extension...', {
+      recipients: campaignContacts.length,
+      template: campaignData.message.substring(0, 50) + '...',
+      delay: campaignData.delay,
+      campaignId: campaignId
+    });
+
     return new Promise((resolve, reject) => {
       (window as any).chrome.runtime.sendMessage(
         'ikadenoepdcldpfoenoibjdmdpjpkhhp',
@@ -452,10 +459,16 @@ const triggerExtensionCampaign = async (uid: string, campaignId: string) => {
           }
         },
         (response: any) => {
+          console.log('📥 Extension BULK_SEND response:', response);
+          
           if ((window as any).chrome.runtime.lastError) {
-            console.error('Extension communication error:', (window as any).chrome.runtime.lastError);
+            console.error('❌ Extension communication error:', (window as any).chrome.runtime.lastError);
             reject((window as any).chrome.runtime.lastError);
+          } else if (!response) {
+            console.error('❌ No response from extension');
+            reject(new Error('No response from extension'));
           } else {
+            console.log('✅ BULK_SEND message sent successfully');
             resolve(response);
           }
         }
