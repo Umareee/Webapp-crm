@@ -101,8 +101,8 @@ const isChromeAvailable = (): boolean => {
 };
 
 /**
- * Checks if Chrome messaging APIs are fully available for extension communication
- * Validates that all required messaging methods are present and functional
+ * Checks if Chrome messaging APIs are available for sending messages to extensions
+ * For webapp context, we only need sendMessage capability
  * 
  * @returns true if Chrome messaging APIs are available and functional
  */
@@ -117,26 +117,9 @@ const isChromeMessagingAvailable = (): boolean => {
   
   const chrome = (window as any).chrome;
   
-  // Check if sendMessage function exists
+  // Check if sendMessage function exists (this is all we need for webapp to extension communication)
   if (typeof chrome.runtime.sendMessage !== 'function') {
     console.log('[Extension Hook] chrome.runtime.sendMessage is not a function');
-    return false;
-  }
-  
-  // Check if onMessage object exists
-  if (typeof chrome.runtime.onMessage === 'undefined') {
-    console.log('[Extension Hook] chrome.runtime.onMessage is undefined');
-    return false;
-  }
-  
-  // Check if message listener methods exist
-  if (typeof chrome.runtime.onMessage.addListener !== 'function') {
-    console.log('[Extension Hook] chrome.runtime.onMessage.addListener is not a function');
-    return false;
-  }
-  
-  if (typeof chrome.runtime.onMessage.removeListener !== 'function') {
-    console.log('[Extension Hook] chrome.runtime.onMessage.removeListener is not a function');
     return false;
   }
   
@@ -376,39 +359,14 @@ export const useExtension = () => {
     });
   }, []); // No dependencies since we do real-time checks
 
-  // Listen for progress updates from extension
-  useEffect(() => {
-    if (!status.isInstalled || !isChromeMessagingAvailable()) return;
-
-    const handleMessage = (message: any, sender: any, sendResponse: any) => {
-      if (message.type === 'BULK_PROGRESS_UPDATE') {
-        setBulkSendProgress(message.progress);
-      } else if (message.type === 'BULK_SEND_COMPLETE') {
-        setBulkSendProgress(null);
-        // Handle completion
-      }
-    };
-
-    try {
-      (window as any).chrome.runtime.onMessage.addListener(handleMessage);
-      return () => {
-        try {
-          (window as any).chrome.runtime.onMessage.removeListener(handleMessage);
-        } catch (error) {
-          console.warn('[Extension Hook] Error removing message listener:', error);
-        }
-      };
-    } catch (error) {
-      console.warn('[Extension Hook] Error adding message listener:', error);
-      return () => {}; // Return empty cleanup function
-    }
-  }, [status.isInstalled]);
+  // Note: Direct message listening from extension to webapp is not available
+  // We'll rely on polling for progress updates instead
 
   // Poll for progress updates if needed
   const pollProgress = useCallback(() => {
     console.log('[Extension Hook] Starting progress polling');
-    if (!status.isInstalled || !isChromeMessagingAvailable()) {
-      console.warn('[Extension Hook] Cannot poll progress - extension not available');
+    if (!isChromeMessagingAvailable()) {
+      console.warn('[Extension Hook] Cannot poll progress - Chrome messaging not available');
       return () => {};
     }
 
@@ -444,13 +402,13 @@ export const useExtension = () => {
       console.log('[Extension Hook] Stopping progress polling');
       clearInterval(interval);
     };
-  }, [status.isInstalled]);
+  }, []); // No dependencies needed
 
   // Cancel bulk send
   const cancelBulkSend = useCallback(async () => {
     console.log('[Extension Hook] Attempting to cancel bulk send');
-    if (!status.isInstalled || !isChromeMessagingAvailable()) {
-      console.error('[Extension Hook] Cannot cancel - extension not available');
+    if (!isChromeMessagingAvailable()) {
+      console.error('[Extension Hook] Cannot cancel - Chrome messaging not available');
       return false;
     }
 
@@ -481,7 +439,7 @@ export const useExtension = () => {
         }
       );
     });
-  }, [status.isInstalled]);
+  }, []); // No dependencies needed
 
   // Start polling when bulk send begins
   useEffect(() => {
