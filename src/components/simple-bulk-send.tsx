@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useMemo } from 'react';
+import { useState, useRef, useMemo, useEffect } from 'react';
 import { useAppState } from '@/context/app-state-context';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -34,6 +34,13 @@ export function SimpleBulkSend() {
   const { toast } = useToast();
   const { sendBulkCampaign, bulkSendProgress, cancelBulkSend } = useExtension();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  // Ensure we're in browser environment
+  const [isClient, setIsClient] = useState(false);
+  
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -208,6 +215,29 @@ export function SimpleBulkSend() {
   const progressPercent = bulkSendProgress 
     ? Math.round((bulkSendProgress.currentIndex / bulkSendProgress.totalCount) * 100) 
     : 0;
+
+  // Don't render extension-dependent components during SSR
+  if (!isClient) {
+    return (
+      <div className="max-w-4xl mx-auto space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5" />
+              Bulk Send
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="h-8 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-32 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-8 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">

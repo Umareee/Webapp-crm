@@ -133,62 +133,65 @@ const isChromeMessagingAvailable = (): boolean => {
 /**
  * Test function to check extension communication
  * This can be called from browser console to debug extension issues
+ * Only available in browser environment (not SSR)
  */
-(window as any).testExtensionConnection = async () => {
-  console.log('[Extension Hook] === EXTENSION CONNECTION TEST ===');
-  
-  console.log('Current URL:', window.location.href);
-  console.log('Extension ID being used:', EXTENSION_ID);
-  
-  console.log('1. Checking Chrome availability...', isChromeAvailable());
-  console.log('2. Checking Chrome messaging...', isChromeMessagingAvailable());
-  
-  if (!isChromeAvailable() || !isChromeMessagingAvailable()) {
-    console.log('❌ Chrome APIs not available');
-    return false;
-  }
-  
-  console.log('3. Sending PING to extension ID:', EXTENSION_ID);
-  
-  try {
-    const result = await new Promise((resolve) => {
-      const timeout = setTimeout(() => {
-        console.log('❌ PING timeout after 5 seconds');
-        resolve(false);
-      }, 5000);
-      
-      (window as any).chrome!.runtime.sendMessage(
-        EXTENSION_ID,
-        { type: 'PING' },
-        (response: any) => {
-          clearTimeout(timeout);
-          
-          if ((window as any).chrome!.runtime.lastError) {
-            console.log('❌ Chrome runtime error:', (window as any).chrome!.runtime.lastError);
-            resolve(false);
-          } else {
-            console.log('✅ Extension response:', response);
-            resolve(response?.type === 'PONG' || response?.success === true);
-          }
-        }
-      );
-    });
+if (typeof window !== 'undefined') {
+  (window as any).testExtensionConnection = async () => {
+    console.log('[Extension Hook] === EXTENSION CONNECTION TEST ===');
     
-    console.log('Extension test result:', result ? '✅ SUCCESS' : '❌ FAILED');
-    return result;
-  } catch (error) {
-    console.log('❌ Extension test error:', error);
-    return false;
-  }
-};
+    console.log('Current URL:', window.location.href);
+    console.log('Extension ID being used:', EXTENSION_ID);
+    
+    console.log('1. Checking Chrome availability...', isChromeAvailable());
+    console.log('2. Checking Chrome messaging...', isChromeMessagingAvailable());
+    
+    if (!isChromeAvailable() || !isChromeMessagingAvailable()) {
+      console.log('❌ Chrome APIs not available');
+      return false;
+    }
+    
+    console.log('3. Sending PING to extension ID:', EXTENSION_ID);
+    
+    try {
+      const result = await new Promise((resolve) => {
+        const timeout = setTimeout(() => {
+          console.log('❌ PING timeout after 5 seconds');
+          resolve(false);
+        }, 5000);
+        
+        (window as any).chrome!.runtime.sendMessage(
+          EXTENSION_ID,
+          { type: 'PING' },
+          (response: any) => {
+            clearTimeout(timeout);
+            
+            if ((window as any).chrome!.runtime.lastError) {
+              console.log('❌ Chrome runtime error:', (window as any).chrome!.runtime.lastError);
+              resolve(false);
+            } else {
+              console.log('✅ Extension response:', response);
+              resolve(response?.type === 'PONG' || response?.success === true);
+            }
+          }
+        );
+      });
+      
+      console.log('Extension test result:', result ? '✅ SUCCESS' : '❌ FAILED');
+      return result;
+    } catch (error) {
+      console.log('❌ Extension test error:', error);
+      return false;
+    }
+  };
 
-// Also add a helper to check what extensions are installed
-(window as any).listChromeExtensions = () => {
-  console.log('Chrome object:', (window as any).chrome);
-  console.log('Chrome runtime:', (window as any).chrome?.runtime);
-  console.log('Chrome runtime ID:', (window as any).chrome?.runtime?.id);
-  console.log('Extension ID in use:', EXTENSION_ID);
-};
+  // Also add a helper to check what extensions are installed
+  (window as any).listChromeExtensions = () => {
+    console.log('Chrome object:', (window as any).chrome);
+    console.log('Chrome runtime:', (window as any).chrome?.runtime);
+    console.log('Chrome runtime ID:', (window as any).chrome?.runtime?.id);
+    console.log('Extension ID in use:', EXTENSION_ID);
+  };
+}
 
 export const useExtension = () => {
   const [status, setStatus] = useState<ExtensionStatus>({
