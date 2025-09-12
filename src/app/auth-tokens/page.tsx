@@ -14,6 +14,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Key, Copy, Trash2, Plus, Shield, Monitor, Activity, AlertTriangle } from 'lucide-react';
 import { getIdToken } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import AppLayout from '@/components/layout/app-layout';
 
 interface JWTToken {
   id: string;
@@ -312,11 +313,12 @@ export default function AuthTokensPage() {
   }
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
-      <div className="flex items-center space-x-2">
-        <Shield className="h-6 w-6" />
-        <h1 className="text-2xl font-bold">Authentication Management</h1>
-      </div>
+    <AppLayout>
+      <div className="container mx-auto p-6 space-y-6">
+        <div className="flex items-center space-x-2">
+          <Shield className="h-6 w-6" />
+          <h1 className="text-2xl font-bold">Authentication Management</h1>
+        </div>
 
       {/* Stats Cards */}
       {stats && (
@@ -568,6 +570,7 @@ export default function AuthTokensPage() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+      </div>
+    </AppLayout>
   );
 }
