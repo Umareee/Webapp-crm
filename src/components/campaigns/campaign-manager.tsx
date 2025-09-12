@@ -52,7 +52,6 @@ import {
   MoreHorizontal,
   Trash2,
   Edit,
-  Calendar,
   Users,
   MessageCircle,
   Clock,
@@ -214,7 +213,6 @@ export function CampaignManager({ onEditCampaign, onCreateCampaign }: CampaignMa
   const getStatusBadge = (status: Campaign['status']) => {
     const variants: Record<Campaign['status'], { variant: any; icon: any; color: string }> = {
       pending: { variant: 'secondary', icon: Clock, color: 'text-gray-500' },
-      scheduled: { variant: 'outline', icon: Calendar, color: 'text-blue-500' },
       'in-progress': { variant: 'default', icon: Loader2, color: 'text-blue-500' },
       paused: { variant: 'secondary', icon: Pause, color: 'text-yellow-500' },
       completed: { variant: 'success', icon: CheckCircle, color: 'text-green-500' },

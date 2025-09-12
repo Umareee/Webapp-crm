@@ -25,7 +25,6 @@ import {
   Users,
   MessageCircle,
   Clock,
-  Calendar,
   X,
 } from 'lucide-react';
 
@@ -48,7 +47,6 @@ export function CampaignForm({ campaign, onSave, onCancel }: CampaignFormProps) 
     selectedTagIds: campaign?.selectedTagIds || [],
     message: campaign?.message || '',
     delay: campaign?.delay || 10,
-    scheduledAt: campaign?.scheduledAt ? new Date(campaign.scheduledAt.toDate()).toISOString().slice(0, 16) : '',
   });
   
   const [saving, setSaving] = useState(false);
@@ -163,7 +161,6 @@ export function CampaignForm({ campaign, onSave, onCancel }: CampaignFormProps) 
         message: formData.message.trim(),
         delay: formData.delay,
         totalRecipients: validRecipients.length,
-        scheduledAt: formData.scheduledAt ? new Date(formData.scheduledAt) as any : undefined,
       };
 
       let savedCampaign;
@@ -177,7 +174,7 @@ export function CampaignForm({ campaign, onSave, onCancel }: CampaignFormProps) 
         savedCampaign = { 
           id: campaignId, 
           ...campaignData, 
-          status: (campaignData.scheduledAt ? 'scheduled' : 'pending') as Campaign['status'],
+          status: 'pending' as Campaign['status'],
           createdAt: new Date() as any,
           startedAt: undefined,
           completedAt: undefined,
@@ -338,19 +335,6 @@ export function CampaignForm({ campaign, onSave, onCancel }: CampaignFormProps) 
                 />
               </div>
               
-              <div className="space-y-2">
-                <Label htmlFor="scheduledAt">
-                  Schedule for later (optional)
-                </Label>
-                <Input
-                  id="scheduledAt"
-                  type="datetime-local"
-                  value={formData.scheduledAt}
-                  onChange={(e) => updateField('scheduledAt', e.target.value)}
-                  min={new Date().toISOString().slice(0, 16)}
-                  disabled={saving}
-                />
-              </div>
             </div>
           </CardContent>
         </Card>
@@ -419,12 +403,6 @@ export function CampaignForm({ campaign, onSave, onCancel }: CampaignFormProps) 
                 <span>{formData.delay}s delay between messages</span>
               </div>
               
-              {formData.scheduledAt && (
-                <div className="flex items-center gap-2 text-sm">
-                  <Calendar className="h-4 w-4" />
-                  <span>Scheduled for {new Date(formData.scheduledAt).toLocaleString()}</span>
-                </div>
-              )}
               
               <div className="flex items-center gap-2 text-sm text-muted-foreground">
                 <MessageCircle className="h-4 w-4" />
@@ -446,9 +424,7 @@ export function CampaignForm({ campaign, onSave, onCancel }: CampaignFormProps) 
                 ? 'Saving...' 
                 : campaign 
                   ? 'Update Campaign' 
-                  : formData.scheduledAt 
-                    ? 'Schedule Campaign'
-                    : 'Create Campaign'
+                  : 'Create Campaign'
               }
             </Button>
           </CardContent>

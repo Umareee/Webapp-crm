@@ -151,7 +151,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
         
         // Filter active campaigns for real-time progress tracking
         const activeCampaignsData = campaignsData.filter(c => 
-          c.status === 'in-progress' || c.status === 'pending' || c.status === 'scheduled'
+          c.status === 'in-progress' || c.status === 'pending'
         );
         setActiveCampaigns(activeCampaignsData);
       }, (error) => console.error("Error fetching campaigns:", error));

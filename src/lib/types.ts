@@ -33,8 +33,7 @@ export type Campaign = {
     selectedTagIds: string[];
     message: string;
     delay: number; // in seconds between messages
-    status: 'pending' | 'scheduled' | 'in-progress' | 'paused' | 'completed' | 'failed' | 'cancelled';
-    scheduledAt?: any; // serverTimestamp for scheduled campaigns
+    status: 'pending' | 'in-progress' | 'paused' | 'completed' | 'failed' | 'cancelled';
     createdAt: any; // serverTimestamp
     startedAt?: any; // serverTimestamp
     completedAt?: any; // serverTimestamp

@@ -337,7 +337,7 @@ export const addCampaign = async (uid: string, campaignData: CampaignData): Prom
   const newCampaignRef = doc(campaignCollectionRef);
   await setDoc(newCampaignRef, {
     ...campaignData,
-    status: campaignData.scheduledAt ? 'scheduled' : 'pending',
+    status: 'pending',
     createdAt: serverTimestamp(),
     successCount: 0,
     failureCount: 0,
