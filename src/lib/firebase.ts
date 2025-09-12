@@ -404,20 +404,39 @@ const triggerExtensionCampaign = async (uid: string, campaignId: string) => {
     const contacts = await new Promise<any[]>((resolve) => {
       (window as any).chrome.runtime.sendMessage(
         'ikadenoepdcldpfoenoibjdmdpjpkhhp',
-        { type: 'GET_CONTACTS' },
+        { type: 'GET_CONTACTS_FROM_EXTENSION' },
         (response: any) => {
-          resolve(response?.contacts || []);
+          console.log('Extension contacts response:', response);
+          resolve(response?.payload || []);
         }
       );
     });
+    
+    console.log('Retrieved contacts from extension:', contacts.length, contacts);
+    console.log('Campaign recipientContactIds:', campaignData.recipientContactIds);
     
     // Filter contacts for this campaign
     const campaignContacts = contacts.filter(contact => 
       campaignData.recipientContactIds.includes(contact.id) && contact.userId
     );
     
+    console.log('Filtered campaign contacts:', campaignContacts.length, campaignContacts);
+    
+    // Debug: check contacts without userId
+    const contactsWithoutUserId = contacts.filter(contact => 
+      campaignData.recipientContactIds.includes(contact.id) && !contact.userId
+    );
+    if (contactsWithoutUserId.length > 0) {
+      console.warn('Contacts without userId:', contactsWithoutUserId);
+    }
+    
     if (campaignContacts.length === 0) {
-      throw new Error('No valid contacts found for campaign');
+      const detailedError = `No valid contacts found for campaign. 
+        Total contacts from extension: ${contacts.length}
+        Campaign recipient IDs: ${campaignData.recipientContactIds.length}
+        Contacts matching IDs: ${contacts.filter(c => campaignData.recipientContactIds.includes(c.id)).length}
+        Contacts matching IDs with userId: ${campaignContacts.length}`;
+      throw new Error(detailedError);
     }
 
     return new Promise((resolve, reject) => {
