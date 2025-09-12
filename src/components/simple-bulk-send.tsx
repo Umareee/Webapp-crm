@@ -199,7 +199,7 @@ export function SimpleBulkSend() {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <MessageCircle className="h-5 w-5" />
-            Simple Bulk Send
+            Bulk Send
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -211,7 +211,7 @@ export function SimpleBulkSend() {
                 {tags.map(tag => (
                   <label
                     key={tag.id}
-                    className="flex items-center space-x-2 p-3 rounded-lg border cursor-pointer hover:bg-gray-50"
+                    className="flex items-center space-x-2 p-3 rounded-lg border cursor-pointer hover:bg-blue-50 hover:border-blue-200 transition-colors duration-200 dark:hover:bg-blue-950/50 dark:hover:border-blue-800"
                   >
                     <Checkbox
                       checked={formData.selectedTagIds.includes(tag.id)}
