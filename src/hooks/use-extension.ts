@@ -23,6 +23,9 @@ import { useState, useEffect, useCallback } from 'react';
 
 /// <reference types="chrome"/>
 
+// Extension ID constant - make sure this matches your actual extension ID
+const EXTENSION_ID = process.env.NEXT_PUBLIC_EXTENSION_ID || 'ikadenoepdcldpfoenoibjdmdpjpkhhp';
+
 /**
  * Extension connection and version information
  */
@@ -141,6 +144,55 @@ const isChromeMessagingAvailable = (): boolean => {
   return true;
 };
 
+/**
+ * Test function to check extension communication
+ * This can be called from browser console to debug extension issues
+ */
+(window as any).testExtensionConnection = async () => {
+  console.log('[Extension Hook] === EXTENSION CONNECTION TEST ===');
+  
+  console.log('1. Checking Chrome availability...', isChromeAvailable());
+  console.log('2. Checking Chrome messaging...', isChromeMessagingAvailable());
+  
+  if (!isChromeAvailable() || !isChromeMessagingAvailable()) {
+    console.log('❌ Chrome APIs not available');
+    return false;
+  }
+  
+  console.log('3. Sending PING to extension ID:', EXTENSION_ID);
+  
+  try {
+    const result = await new Promise((resolve) => {
+      const timeout = setTimeout(() => {
+        console.log('❌ PING timeout after 5 seconds');
+        resolve(false);
+      }, 5000);
+      
+      (window as any).chrome!.runtime.sendMessage(
+        EXTENSION_ID,
+        { type: 'PING' },
+        (response: any) => {
+          clearTimeout(timeout);
+          
+          if ((window as any).chrome!.runtime.lastError) {
+            console.log('❌ Chrome runtime error:', (window as any).chrome!.runtime.lastError);
+            resolve(false);
+          } else {
+            console.log('✅ Extension response:', response);
+            resolve(response?.type === 'PONG' || response?.success === true);
+          }
+        }
+      );
+    });
+    
+    console.log('Extension test result:', result ? '✅ SUCCESS' : '❌ FAILED');
+    return result;
+  } catch (error) {
+    console.log('❌ Extension test error:', error);
+    return false;
+  }
+};
+
 export const useExtension = () => {
   const [status, setStatus] = useState<ExtensionStatus>({
     isInstalled: false,
@@ -182,10 +234,10 @@ export const useExtension = () => {
           reject(new Error('Extension timeout'));
         }, 2000);
 
-        console.log('[Extension Hook] Sending PING message to extension ID: ikadenoepdcldpfoenoibjdmdpjpkhhp');
+        console.log('[Extension Hook] Sending PING message to extension ID:', EXTENSION_ID);
         
         (window as any).chrome!.runtime.sendMessage(
-          'ikadenoepdcldpfoenoibjdmdpjpkhhp', // Replace with your actual extension ID
+          EXTENSION_ID,
           { type: 'PING' },
           (response: any) => {
             clearTimeout(timeout);
@@ -225,9 +277,51 @@ export const useExtension = () => {
       delay: payload.delay
     });
 
-    if (!status.isInstalled || !isChromeMessagingAvailable()) {
-      console.error('[Extension Hook] Extension not available for bulk send');
-      throw new Error('Extension not installed or messaging not available. Please install the Chrome extension to send bulk messages.');
+    console.log('[Extension Hook] Current extension status:', status);
+
+    // Check Chrome messaging availability first
+    if (!isChromeMessagingAvailable()) {
+      console.error('[Extension Hook] Chrome messaging not available');
+      throw new Error('Chrome extension messaging not available. Please use a Chromium-based browser.');
+    }
+
+    // For bulk send, we need to ensure we can communicate with the extension
+    // Let's do a real-time check instead of relying on cached status
+    try {
+      console.log('[Extension Hook] Performing real-time extension check before bulk send...');
+      
+      const pingResult = await new Promise<boolean>((resolve) => {
+        const timeout = setTimeout(() => {
+          console.log('[Extension Hook] Real-time ping timeout');
+          resolve(false);
+        }, 3000);
+
+        (window as any).chrome!.runtime.sendMessage(
+          EXTENSION_ID,
+          { type: 'PING' },
+          (response: any) => {
+            clearTimeout(timeout);
+            
+            if ((window as any).chrome!.runtime.lastError) {
+              console.log('[Extension Hook] Real-time ping error:', (window as any).chrome!.runtime.lastError);
+              resolve(false);
+            } else {
+              console.log('[Extension Hook] Real-time ping successful:', response);
+              resolve(response?.type === 'PONG' || response?.status === 'ok');
+            }
+          }
+        );
+      });
+
+      if (!pingResult) {
+        console.error('[Extension Hook] Extension not responding to real-time ping');
+        throw new Error('Extension not responding. Please make sure the Chrome extension is installed and active.');
+      }
+
+      console.log('[Extension Hook] Extension confirmed active, proceeding with bulk send...');
+    } catch (error: any) {
+      console.error('[Extension Hook] Extension communication test failed:', error);
+      throw new Error(`Extension communication failed: ${error.message || 'Unknown error'}`);
     }
 
     return new Promise<{ success: boolean; message?: string }>((resolve, reject) => {
@@ -238,7 +332,7 @@ export const useExtension = () => {
 
       try {
         (window as any).chrome!.runtime.sendMessage(
-          'ikadenoepdcldpfoenoibjdmdpjpkhhp', // TODO: Make this configurable
+          EXTENSION_ID, // TODO: Make this configurable
           {
             type: 'BULK_SEND',
             payload: {
@@ -280,7 +374,7 @@ export const useExtension = () => {
         reject(new Error(`Failed to communicate with extension: ${error.message}`));
       }
     });
-  }, [status.isInstalled]);
+  }, []); // No dependencies since we do real-time checks
 
   // Listen for progress updates from extension
   useEffect(() => {
@@ -321,7 +415,7 @@ export const useExtension = () => {
     const interval = setInterval(() => {
       try {
         (window as any).chrome!.runtime.sendMessage(
-          'ikadenoepdcldpfoenoibjdmdpjpkhhp',
+          EXTENSION_ID,
           { type: 'GET_BULK_PROGRESS' },
           (response: any) => {
             if ((window as any).chrome!.runtime.lastError) {
@@ -367,7 +461,7 @@ export const useExtension = () => {
       }, 5000);
 
       (window as any).chrome!.runtime.sendMessage(
-        'ikadenoepdcldpfoenoibjdmdpjpkhhp',
+        EXTENSION_ID,
         { type: 'CANCEL_BULK_SEND' },
         (response: any) => {
           clearTimeout(timeout);

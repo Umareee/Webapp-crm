@@ -161,9 +161,25 @@ export function SimpleBulkSend() {
       
     } catch (error: any) {
       console.error('[Bulk Send] Error:', error);
+      
+      // Provide specific error messages based on the error type
+      let errorTitle = 'Error Starting Bulk Send';
+      let errorDescription = error.message;
+      
+      if (error.message.includes('Extension not responding')) {
+        errorTitle = 'Extension Connection Failed';
+        errorDescription = 'The Chrome extension is not responding. Please refresh this page and make sure the extension is active.';
+      } else if (error.message.includes('Chrome extension messaging')) {
+        errorTitle = 'Browser Not Supported';
+        errorDescription = 'Please use Chrome, Edge, or Brave browser with the extension installed.';
+      } else if (error.message.includes('communication failed')) {
+        errorTitle = 'Extension Communication Error';
+        errorDescription = 'Failed to communicate with the extension. Please refresh the page and try again.';
+      }
+      
       toast({
-        title: 'Error Starting Bulk Send',
-        description: error.message || 'Failed to start bulk send. Please check that the extension is installed and active.',
+        title: errorTitle,
+        description: errorDescription,
         variant: 'destructive',
       });
     } finally {
