@@ -36,6 +36,14 @@ const isChromeAvailable = (): boolean => {
          typeof (window as any).chrome.runtime !== 'undefined';
 };
 
+const isChromeMessagingAvailable = (): boolean => {
+  return isChromeAvailable() && 
+         typeof (window as any).chrome.runtime.sendMessage === 'function' &&
+         typeof (window as any).chrome.runtime.onMessage !== 'undefined' &&
+         typeof (window as any).chrome.runtime.onMessage.addListener === 'function' &&
+         typeof (window as any).chrome.runtime.onMessage.removeListener === 'function';
+};
+
 export const useExtension = () => {
   const [status, setStatus] = useState<ExtensionStatus>({
     isInstalled: false,
@@ -48,6 +56,15 @@ export const useExtension = () => {
     try {
       // Check if chrome is available
       if (!isChromeAvailable()) {
+        setStatus({
+          isInstalled: false,
+          isConnected: false,
+        });
+        return;
+      }
+
+      // Check if chrome messaging is available
+      if (!isChromeMessagingAvailable()) {
         setStatus({
           isInstalled: false,
           isConnected: false,
@@ -90,8 +107,8 @@ export const useExtension = () => {
 
   // Send bulk campaign to extension
   const sendBulkCampaign = useCallback(async (payload: BulkSendPayload) => {
-    if (!status.isInstalled || !isChromeAvailable()) {
-      throw new Error('Extension not installed');
+    if (!status.isInstalled || !isChromeMessagingAvailable()) {
+      throw new Error('Extension not installed or messaging not available');
     }
 
     return new Promise<{ success: boolean; message?: string }>((resolve, reject) => {
@@ -118,7 +135,7 @@ export const useExtension = () => {
 
   // Listen for progress updates from extension
   useEffect(() => {
-    if (!status.isInstalled || !isChromeAvailable()) return;
+    if (!status.isInstalled || !isChromeMessagingAvailable()) return;
 
     const handleMessage = (message: any, sender: any, sendResponse: any) => {
       if (message.type === 'BULK_PROGRESS_UPDATE') {
@@ -129,15 +146,24 @@ export const useExtension = () => {
       }
     };
 
-    (window as any).chrome!.runtime.onMessage.addListener(handleMessage);
-    return () => {
-      (window as any).chrome!.runtime.onMessage.removeListener(handleMessage);
-    };
+    try {
+      (window as any).chrome.runtime.onMessage.addListener(handleMessage);
+      return () => {
+        try {
+          (window as any).chrome.runtime.onMessage.removeListener(handleMessage);
+        } catch (error) {
+          console.warn('[Extension Hook] Error removing message listener:', error);
+        }
+      };
+    } catch (error) {
+      console.warn('[Extension Hook] Error adding message listener:', error);
+      return () => {}; // Return empty cleanup function
+    }
   }, [status.isInstalled]);
 
   // Poll for progress updates if needed
   const pollProgress = useCallback(() => {
-    if (!status.isInstalled || !isChromeAvailable()) return;
+    if (!status.isInstalled || !isChromeMessagingAvailable()) return;
 
     const interval = setInterval(() => {
       (window as any).chrome!.runtime.sendMessage(
@@ -159,7 +185,7 @@ export const useExtension = () => {
 
   // Cancel bulk send
   const cancelBulkSend = useCallback(async () => {
-    if (!status.isInstalled || !isChromeAvailable()) return false;
+    if (!status.isInstalled || !isChromeMessagingAvailable()) return false;
 
     return new Promise<boolean>((resolve) => {
       ((window as any) as any).chrome!.runtime.sendMessage(
