@@ -1,6 +1,6 @@
 
 import type { ActiveView } from '@/lib/types';
-import { Cog, FileText, Tag, Users, Send, LayoutDashboard, Shield } from 'lucide-react';
+import { Cog, FileText, Tag, Users, Send, LayoutDashboard, Shield, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
@@ -17,6 +17,7 @@ const navItems = [
   { view: 'tags' as const, label: 'Tags', icon: Tag, href: '/' },
   { view: 'templates' as const, label: 'Templates', icon: FileText, href: '/' },
   { view: 'contacts' as const, label: 'Contacts', icon: Users, href: '/' },
+  { view: 'friend-requests' as const, label: 'Friend Requests', icon: UserPlus, href: '/' },
   { view: 'bulk' as const, label: 'Bulk Send', icon: Send, href: '/bulk' },
 ];
 

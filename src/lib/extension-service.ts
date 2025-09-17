@@ -9,12 +9,16 @@ export interface ExtensionSyncService {
   syncContacts(contacts: any[]): Promise<void>;
   syncTags(tags: any[]): Promise<void>;
   syncTemplates(templates: any[]): Promise<void>;
+  syncFriendRequests(friendRequests: any[]): Promise<void>;
   
   // Listen for extension data changes
   onExtensionDataChange(callback: (data: { type: string; payload: any }) => void): () => void;
   
   // Get data from extension
-  getExtensionData(type: 'contacts' | 'tags' | 'templates'): Promise<any>;
+  getExtensionData(type: 'contacts' | 'tags' | 'templates' | 'friendRequests'): Promise<any>;
+  
+  // Friend request specific methods
+  refreshFriendRequestStatuses(): Promise<void>;
 }
 
 export interface ExtensionStatus {
@@ -407,6 +411,60 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
     });
   }
 
+  async syncFriendRequests(friendRequests: any[]): Promise<void> {
+    if (!await this.isExtensionConnected()) return;
+
+    if (!(window as any).chrome?.runtime?.sendMessage) {
+      console.log('[Extension Service] chrome.runtime.sendMessage not available for friend requests sync');
+      return;
+    }
+
+    return new Promise((resolve, reject) => {
+      (window as any).chrome.runtime.sendMessage(
+        this.extensionId,
+        {
+          type: 'SYNC_FRIEND_REQUESTS_TO_EXTENSION',
+          payload: { friendRequests }
+        },
+        (response) => {
+          if ((window as any).chrome?.runtime?.lastError) {
+            reject((window as any).chrome.runtime.lastError);
+          } else {
+            resolve();
+          }
+        }
+      );
+    });
+  }
+
+  async refreshFriendRequestStatuses(): Promise<void> {
+    if (!await this.isExtensionConnected()) return;
+
+    if (!(window as any).chrome?.runtime?.sendMessage) {
+      console.log('[Extension Service] chrome.runtime.sendMessage not available for friend request status refresh');
+      return;
+    }
+
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => reject(new Error('Timeout')), 30000); // 30 second timeout for status check
+      
+      (window as any).chrome.runtime.sendMessage(
+        this.extensionId,
+        {
+          type: 'checkFriendRequestStatuses'
+        },
+        (response) => {
+          clearTimeout(timeout);
+          if ((window as any).chrome?.runtime?.lastError) {
+            reject((window as any).chrome.runtime.lastError);
+          } else {
+            resolve();
+          }
+        }
+      );
+    });
+  }
+
   onExtensionDataChange(callback: (data: { type: string; payload: any }) => void): () => void {
     this.messageListeners.add(callback);
     
@@ -430,7 +488,7 @@ class ChromeExtensionSyncService implements ExtensionSyncService {
       (window as any).chrome.runtime.sendMessage(
         this.extensionId,
         {
-          type: `GET_${type.toUpperCase()}_FROM_EXTENSION`
+          type: type === 'friendRequests' ? 'GET_FRIENDREQUESTS_FROM_EXTENSION' : `GET_${type.toUpperCase()}_FROM_EXTENSION`
         },
         (response) => {
           clearTimeout(timeout);

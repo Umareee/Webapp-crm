@@ -32,6 +32,7 @@ import { TagsView } from '@/components/views/tags-view';
 import { TemplatesView } from '@/components/views/templates-view';
 import { ContactsView } from '@/components/views/contacts-view';
 import { SearchView } from '@/components/views/search-view';
+import { FriendRequestsView } from '@/components/views/friend-requests-view';
 
 /**
  * Home Page Component
@@ -40,7 +41,7 @@ import { SearchView } from '@/components/views/search-view';
  */
 export default function Home() {
   // Extract necessary state from global app context
-  const { user, authLoading, activeView, tags, templates, contacts, selectedTagId, searchQuery } = useAppState();
+  const { user, authLoading, activeView, tags, templates, contacts, friendRequests, selectedTagId, searchQuery, refreshFriendRequestStatuses, isRefreshingFriendRequests } = useAppState();
   const router = useRouter();
 
   // Authentication guard effect - redirect to auth page if user not logged in
@@ -101,6 +102,12 @@ export default function Home() {
         return <TemplatesView templates={templates} />;
       case 'contacts':
         return <ContactsView contacts={contacts} tags={tags} selectedTagId={selectedTagId} />;
+      case 'friend-requests':
+        return <FriendRequestsView 
+          friendRequests={friendRequests} 
+          onRefreshStatus={refreshFriendRequestStatuses}
+          isRefreshing={isRefreshingFriendRequests}
+        />;
       default:
         // Fallback to dashboard for unknown views
         return <DashboardView tags={tags} templates={templates} contacts={contacts} />;

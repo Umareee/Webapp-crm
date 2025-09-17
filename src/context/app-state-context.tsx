@@ -26,7 +26,7 @@ import type { User } from 'firebase/auth';
 import { onAuthStateChanged } from 'firebase/auth';
 import { onSnapshot, collection, doc, query, orderBy, QuerySnapshot, DocumentData } from 'firebase/firestore';
 import { auth, db } from '@/lib/firebase';
-import type { ActiveView, Tag, Contact, Template, Campaign, SelectionMode } from '@/lib/types';
+import type { ActiveView, Tag, Contact, Template, Campaign, SelectionMode, FriendRequest } from '@/lib/types';
 import { useSync } from '@/hooks/use-sync';
 
 /**
@@ -54,6 +54,7 @@ interface AppState {
   templates: Template[];                // Message templates for bulk sending
   campaigns: Campaign[];                // All campaigns (completed and active)
   activeCampaigns: Campaign[];          // Currently running campaigns only
+  friendRequests: FriendRequest[];      // Friend requests tracked by extension
   
   // Navigation methods
   setActiveView: (view: ActiveView) => void;
@@ -74,6 +75,10 @@ interface AppState {
   clearTagSelection: () => void;
   clearTemplateSelection: () => void;
   clearContactSelection: () => void;
+  
+  // Friend requests management
+  refreshFriendRequestStatuses: () => Promise<void>;
+  isRefreshingFriendRequests: boolean;
 }
 
 const AppStateContext = createContext<AppState | undefined>(undefined);
@@ -91,6 +96,8 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [activeCampaigns, setActiveCampaigns] = useState<Campaign[]>([]);
+  const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
+  const [isRefreshingFriendRequests, setIsRefreshingFriendRequests] = useState(false);
   
   // Selection state
   const [selectionMode, setSelectionMode] = useState<SelectionMode>(null);
@@ -102,7 +109,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const { initializeSync } = useSync();
 
   // Function to sync data with extension
-  const syncWithExtension = useCallback(async (dataType: 'contacts' | 'tags' | 'templates', data: any[]) => {
+  const syncWithExtension = useCallback(async (dataType: 'contacts' | 'tags' | 'templates' | 'friendRequests', data: any[]) => {
     try {
       const { extensionSyncService } = await import('@/lib/extension-service');
       const isConnected = await extensionSyncService.isExtensionConnected();
@@ -119,6 +126,9 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
             break;
           case 'templates':
             await extensionSyncService.syncTemplates(data);
+            break;
+          case 'friendRequests':
+            await extensionSyncService.syncFriendRequests(data);
             break;
         }
         
@@ -245,6 +255,11 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     syncWithExtension('templates', templates);
   }, [templates, syncWithExtension]);
 
+  useEffect(() => {
+    // Sync friend requests to extension (primarily for display/analytics)
+    syncWithExtension('friendRequests', friendRequests);
+  }, [friendRequests, syncWithExtension]);
+
   // Listen for sync messages from extension
   useEffect(() => {
     const handleExtensionSync = (event: MessageEvent) => {
@@ -264,6 +279,18 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
           break;
         case 'SYNC_TEMPLATES_FROM_EXTENSION':
           handleTemplateSyncFromExtension(event.data.payload);
+          break;
+        case 'SYNC_FRIEND_REQUESTS_FROM_EXTENSION':
+          handleFriendRequestSyncFromExtension(event.data.payload);
+          break;
+        case 'FRIEND_REQUEST_TRACKED':
+          handleFriendRequestTracked(event.data.payload);
+          break;
+        case 'FRIEND_REQUEST_STATUS_UPDATED':
+          handleFriendRequestStatusUpdated(event.data.payload);
+          break;
+        case 'FRIEND_REQUEST_STATUSES_UPDATED':
+          handleFriendRequestStatusesUpdated(event.data.payload);
           break;
       }
     };
@@ -334,6 +361,60 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const handleFriendRequestSyncFromExtension = async (extensionFriendRequests: FriendRequest[]) => {
+    console.log('[AppState] Handling friend requests sync from extension:', extensionFriendRequests.length);
+    
+    // For now, just update local state - friend requests are managed by extension
+    // In the future, we could also sync to Firebase if needed
+    setFriendRequests(extensionFriendRequests);
+  };
+
+  const handleFriendRequestTracked = (friendRequest: FriendRequest) => {
+    console.log('[AppState] Friend request tracked:', friendRequest.name);
+    
+    setFriendRequests(prev => {
+      const existingIndex = prev.findIndex(fr => fr.userId === friendRequest.userId);
+      if (existingIndex >= 0) {
+        // Update existing request
+        const updated = [...prev];
+        updated[existingIndex] = friendRequest;
+        return updated;
+      } else {
+        // Add new request
+        return [...prev, friendRequest];
+      }
+    });
+  };
+
+  const handleFriendRequestStatusUpdated = (data: { userId: string; status: string; timestamp: string }) => {
+    console.log('[AppState] Friend request status updated:', data);
+    
+    setFriendRequests(prev => prev.map(fr => 
+      fr.userId === data.userId 
+        ? { ...fr, status: data.status as FriendRequest['status'], lastChecked: data.timestamp }
+        : fr
+    ));
+  };
+
+  const handleFriendRequestStatusesUpdated = (data: { acceptedFriends: any[]; updatedCount: number }) => {
+    console.log('[AppState] Friend request statuses updated:', data);
+    
+    if (data.acceptedFriends && data.acceptedFriends.length > 0) {
+      setFriendRequests(prev => prev.map(fr => {
+        const acceptedFriend = data.acceptedFriends.find(af => af.userId === fr.userId);
+        if (acceptedFriend) {
+          return {
+            ...fr,
+            status: 'accepted' as const,
+            respondedAt: new Date().toISOString(),
+            lastChecked: new Date().toISOString()
+          };
+        }
+        return fr;
+      }));
+    }
+  };
+
 
   const toggleGenericSelection = (
     id: string,
@@ -362,6 +443,19 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const clearTemplateSelection = () => setSelectedTemplateIds([]);
   const clearContactSelection = () => setSelectedContactIds([]);
 
+  const refreshFriendRequestStatuses = useCallback(async () => {
+    setIsRefreshingFriendRequests(true);
+    try {
+      const { extensionSyncService } = await import('@/lib/extension-service');
+      await extensionSyncService.refreshFriendRequestStatuses();
+      console.log('[AppState] Friend request statuses refresh initiated');
+    } catch (error) {
+      console.error('[AppState] Failed to refresh friend request statuses:', error);
+    } finally {
+      setIsRefreshingFriendRequests(false);
+    }
+  }, []);
+
   const handleSetSelectionMode = (mode: SelectionMode) => {
     setSelectionMode(mode);
     clearTagSelection();
@@ -382,6 +476,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     templates,
     campaigns,
     activeCampaigns,
+    friendRequests,
     setActiveView,
     setSelectedTagId,
     setSearchQuery,
@@ -396,6 +491,8 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     clearTagSelection,
     clearTemplateSelection,
     clearContactSelection,
+    refreshFriendRequestStatuses,
+    isRefreshingFriendRequests,
   };
 
   return (

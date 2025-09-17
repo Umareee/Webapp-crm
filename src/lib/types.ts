@@ -166,11 +166,57 @@ export type CampaignProgress = {
 };
 
 /**
+ * Friend Request Entity
+ * 
+ * Represents a friend request sent through Facebook Groups that is being tracked.
+ * These are synchronized from the Chrome extension which detects and tracks
+ * friend request interactions on Facebook.
+ * 
+ * @example
+ * const friendRequest: FriendRequest = {
+ *   id: "fr_123",
+ *   userId: "1234567890",
+ *   name: "John Doe",
+ *   profilePicture: "https://scontent-lax3-1.xx.fbcdn.net/v/t1.30497-1/...",
+ *   groupId: "group_456",
+ *   status: "sent",
+ *   sentAt: "2024-01-15T10:30:00.000Z",
+ *   respondedAt: null,
+ *   lastChecked: "2024-01-15T10:30:00.000Z"
+ * };
+ */
+export type FriendRequest = {
+  id: string;              // Unique identifier for the friend request
+  userId: string;          // Facebook user ID of the person
+  name: string;            // Name of the person the request was sent to
+  profilePicture?: string; // URL to their profile picture
+  groupId?: string;        // Facebook group ID where the request was initiated
+  status: 'sent' | 'pending' | 'accepted'; // Current status
+  sentAt: string;          // ISO timestamp when request was sent
+  respondedAt?: string;    // ISO timestamp when request was responded to
+  lastChecked?: string;    // ISO timestamp of last status check
+  verificationMethod?: string; // How the status was verified (e.g., 'friends_list_name_match')
+  friendsListName?: string; // Name found in friends list for verification
+};
+
+/**
+ * Friend Request Statistics
+ * 
+ * Aggregated statistics about friend requests for dashboard display
+ */
+export type FriendRequestStats = {
+  total: number;      // Total number of friend requests
+  sent: number;       // Number of requests sent
+  pending: number;    // Number of requests still pending
+  accepted: number;   // Number of requests accepted
+};
+
+/**
  * Active View Types
  * 
  * Defines the different views available in the application sidebar navigation
  */
-export type ActiveView = 'dashboard' | 'tags' | 'templates' | 'bulk' | 'contacts';
+export type ActiveView = 'dashboard' | 'tags' | 'templates' | 'bulk' | 'contacts' | 'friend-requests';
 
 /**
  * Selection Mode Types
@@ -178,4 +224,4 @@ export type ActiveView = 'dashboard' | 'tags' | 'templates' | 'bulk' | 'contacts
  * Used for bulk operations - determines what type of items can be selected
  * null means no bulk selection is active
  */
-export type SelectionMode = 'tag' | 'template' | 'contact' | null;
+export type SelectionMode = 'tag' | 'template' | 'contact' | 'friend-request' | null;

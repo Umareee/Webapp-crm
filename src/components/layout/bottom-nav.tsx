@@ -1,6 +1,6 @@
 
 import type { ActiveView } from '@/lib/types';
-import { Cog, FileText, Tag, Users, Send, LayoutDashboard } from 'lucide-react';
+import { Cog, FileText, Tag, Users, Send, LayoutDashboard, UserPlus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -15,8 +15,8 @@ const navItems = [
   { view: 'dashboard' as const, label: 'Dashboard', icon: LayoutDashboard, href: '/' },
   { view: 'tags' as const, label: 'Tags', icon: Tag, href: '/' },
   { view: 'templates' as const, label: 'Templates', icon: FileText, href: '/' },
-  { view: 'bulk' as const, label: 'Bulk', icon: Send, href: '/bulk' },
   { view: 'contacts' as const, label: 'Contacts', icon: Users, href: '/' },
+  { view: 'friend-requests' as const, label: 'Friends', icon: UserPlus, href: '/' },
 ];
 
 export function BottomNav({ activeView, setActiveView, setSelectedTagId }: BottomNavProps) {
