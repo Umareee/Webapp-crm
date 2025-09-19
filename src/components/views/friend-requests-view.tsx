@@ -34,7 +34,6 @@ export function FriendRequestsView({
 }: FriendRequestsViewProps) {
   const [stats, setStats] = useState<FriendRequestStats>({
     total: 0,
-    sent: 0,
     pending: 0,
     accepted: 0
   });
@@ -43,7 +42,6 @@ export function FriendRequestsView({
   useEffect(() => {
     const newStats: FriendRequestStats = {
       total: friendRequests.length,
-      sent: friendRequests.filter(fr => fr.status === 'sent').length,
       pending: friendRequests.filter(fr => fr.status === 'pending').length,
       accepted: friendRequests.filter(fr => fr.status === 'accepted').length
     };
@@ -52,7 +50,6 @@ export function FriendRequestsView({
 
   const getStatusColor = (status: FriendRequest['status']) => {
     switch (status) {
-      case 'sent': return 'bg-blue-500';
       case 'pending': return 'bg-yellow-500';
       case 'accepted': return 'bg-green-500';
       default: return 'bg-gray-500';
@@ -61,7 +58,6 @@ export function FriendRequestsView({
 
   const getStatusIcon = (status: FriendRequest['status']) => {
     switch (status) {
-      case 'sent': return <UserPlus className="h-4 w-4" />;
       case 'pending': return <Clock className="h-4 w-4" />;
       case 'accepted': return <CheckCircle className="h-4 w-4" />;
       default: return <AlertCircle className="h-4 w-4" />;
@@ -70,7 +66,6 @@ export function FriendRequestsView({
 
   const getStatusText = (status: FriendRequest['status']) => {
     switch (status) {
-      case 'sent': return 'Sent';
       case 'pending': return 'Pending';
       case 'accepted': return 'Accepted';
       default: return 'Unknown';
@@ -164,7 +159,7 @@ export function FriendRequestsView({
       </div>
 
       {/* Statistics Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-sm font-medium">Total Requests</CardTitle>
@@ -230,11 +225,10 @@ export function FriendRequestsView({
         </CardHeader>
         <CardContent>
           <Tabs defaultValue="all" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-3">
               <TabsTrigger value="all">All ({stats.total})</TabsTrigger>
               <TabsTrigger value="pending">Pending ({stats.pending})</TabsTrigger>
               <TabsTrigger value="accepted">Accepted ({stats.accepted})</TabsTrigger>
-              <TabsTrigger value="sent">Sent ({stats.sent})</TabsTrigger>
             </TabsList>
             
             <TabsContent value="all" className="mt-4">
@@ -290,22 +284,6 @@ export function FriendRequestsView({
             </TabsContent>
             
             
-            <TabsContent value="sent" className="mt-4">
-              <div className="space-y-4">
-                {filterByStatus('sent').map(request => (
-                  <FriendRequestCard key={request.id} request={request} />
-                ))}
-                {filterByStatus('sent').length === 0 && (
-                  <div className="text-center py-8">
-                    <UserPlus className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-                    <h3 className="text-lg font-medium mb-2">No Sent Requests</h3>
-                    <p className="text-muted-foreground">
-                      No friend requests are currently in sent status
-                    </p>
-                  </div>
-                )}
-              </div>
-            </TabsContent>
           </Tabs>
         </CardContent>
       </Card>

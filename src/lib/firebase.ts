@@ -199,18 +199,21 @@ export const syncContactsFromExtension = async (uid: string, extensionContacts: 
   // 1. Add/Update contacts that exist in extension
   extensionContacts.forEach(contact => {
     const contactRef = doc(db, `users/${uid}/contacts`, contact.id);
-    batch.set(contactRef, {
+    
+    const contactData = {
       name: contact.name,
       userId: contact.userId,
       profilePicture: contact.profilePicture,
       source: contact.source,
-      groupId: contact.groupId,
+      groupId: contact.groupId || null,
       tags: contact.tags,
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp()
-    }, { merge: true });
+    };
     
-    console.log('[Firebase] Syncing contact:', contact.name, contact.id);
+    batch.set(contactRef, contactData, { merge: true });
+    
+    console.log('[Firebase] Syncing contact:', contact.name, contact.id, 'with tags:', contact.tags);
   });
   
   // 2. Delete contacts that exist in Firebase but not in extension

@@ -79,6 +79,9 @@ interface AppState {
   // Friend requests management
   refreshFriendRequestStatuses: () => Promise<void>;
   isRefreshingFriendRequests: boolean;
+  
+  // Extension bulk send progress
+  extensionBulkSendProgress: any;
 }
 
 const AppStateContext = createContext<AppState | undefined>(undefined);
@@ -98,6 +101,9 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const [activeCampaigns, setActiveCampaigns] = useState<Campaign[]>([]);
   const [friendRequests, setFriendRequests] = useState<FriendRequest[]>([]);
   const [isRefreshingFriendRequests, setIsRefreshingFriendRequests] = useState(false);
+  
+  // Extension bulk send progress state
+  const [extensionBulkSendProgress, setExtensionBulkSendProgress] = useState<any>(null);
   
   // Selection state
   const [selectionMode, setSelectionMode] = useState<SelectionMode>(null);
@@ -292,6 +298,18 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
         case 'FRIEND_REQUEST_STATUSES_UPDATED':
           handleFriendRequestStatusesUpdated(event.data.payload);
           break;
+        case 'BULK_SEND_PROGRESS_UPDATE':
+          handleBulkSendProgressUpdate(event.data.payload);
+          break;
+        case 'BULK_SEND_STARTED':
+          handleBulkSendStarted(event.data.payload);
+          break;
+        case 'BULK_SEND_COMPLETE':
+          handleBulkSendComplete(event.data.payload);
+          break;
+        case 'FRIEND_REQUEST_REFRESH_UPDATE':
+          handleFriendRequestRefreshUpdate(event.data.payload);
+          break;
       }
     };
     
@@ -415,6 +433,38 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const handleBulkSendProgressUpdate = (progress: any) => {
+    console.log('[AppState] 🚨🚨🚨 WEBAPP RECEIVED PROGRESS UPDATE:', progress);
+    setExtensionBulkSendProgress(progress);
+  };
+
+  const handleBulkSendStarted = (data: any) => {
+    console.log('[AppState] 🚨🚨🚨 WEBAPP RECEIVED BULK SEND STARTED:', data);
+    // Initialize progress state when bulk send starts from extension
+    setExtensionBulkSendProgress({
+      isActive: true,
+      currentIndex: 0,
+      totalCount: data.totalCount,
+      successCount: 0,
+      failureCount: 0,
+      startTime: data.startTime,
+      currentContact: null
+    });
+  };
+
+  const handleBulkSendComplete = (stats: any) => {
+    console.log('[AppState] Extension bulk send complete:', stats);
+    // Clear progress after showing completion for a moment
+    setTimeout(() => {
+      setExtensionBulkSendProgress(null);
+    }, 3000);
+  };
+
+  const handleFriendRequestRefreshUpdate = (refreshState: any) => {
+    console.log('[AppState] 🚨🚨🚨 WEBAPP RECEIVED FRIEND REQUEST REFRESH UPDATE:', refreshState);
+    setIsRefreshingFriendRequests(refreshState.isActive);
+  };
+
 
   const toggleGenericSelection = (
     id: string,
@@ -444,14 +494,13 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
   const clearContactSelection = () => setSelectedContactIds([]);
 
   const refreshFriendRequestStatuses = useCallback(async () => {
-    setIsRefreshingFriendRequests(true);
     try {
       const { extensionSyncService } = await import('@/lib/extension-service');
       await extensionSyncService.refreshFriendRequestStatuses();
       console.log('[AppState] Friend request statuses refresh initiated');
     } catch (error) {
       console.error('[AppState] Failed to refresh friend request statuses:', error);
-    } finally {
+      // Only set to false on error - otherwise let extension control the state
       setIsRefreshingFriendRequests(false);
     }
   }, []);
@@ -493,6 +542,7 @@ export const AppStateProvider = ({ children }: { children: ReactNode }) => {
     clearContactSelection,
     refreshFriendRequestStatuses,
     isRefreshingFriendRequests,
+    extensionBulkSendProgress,
   };
 
   return (

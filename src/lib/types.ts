@@ -191,7 +191,7 @@ export type FriendRequest = {
   name: string;            // Name of the person the request was sent to
   profilePicture?: string; // URL to their profile picture
   groupId?: string;        // Facebook group ID where the request was initiated
-  status: 'sent' | 'pending' | 'accepted'; // Current status
+  status: 'pending' | 'accepted'; // Current status
   sentAt: string;          // ISO timestamp when request was sent
   respondedAt?: string;    // ISO timestamp when request was responded to
   lastChecked?: string;    // ISO timestamp of last status check
@@ -206,7 +206,6 @@ export type FriendRequest = {
  */
 export type FriendRequestStats = {
   total: number;      // Total number of friend requests
-  sent: number;       // Number of requests sent
   pending: number;    // Number of requests still pending
   accepted: number;   // Number of requests accepted
 };

@@ -275,7 +275,7 @@ export function CampaignForm({ campaign, onSave, onCancel }: CampaignFormProps) 
               {templates.length > 0 && (
                 <div className="space-y-2">
                   <Label htmlFor="template" className="text-sm">
-                    Load from template (optional)
+                    Load from template
                   </Label>
                   <Select onValueChange={handleTemplateSelect} disabled={saving}>
                     <SelectTrigger id="template">

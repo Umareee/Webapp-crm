@@ -363,6 +363,8 @@ export const useExtension = () => {
             console.log('[Extension Hook] Bulk send response:', response);
 
             if (response.status === 'started') {
+              console.log('[Extension Hook] Bulk send started, beginning progress polling');
+              setShouldPoll(true); // Start polling for progress
               resolve({ success: true, message: `Started sending to ${payload.recipients.length} recipients` });
             } else if (response.status === 'error') {
               reject(new Error(response.message || 'Failed to start bulk send'));
@@ -407,7 +409,11 @@ export const useExtension = () => {
               if (!response.progress.isActive) {
                 console.log('[Extension Hook] Bulk send completed, stopping polling');
                 clearInterval(interval);
-                setBulkSendProgress(null); // Clear progress after completion
+                setShouldPoll(false); // Stop polling
+                // Keep progress visible for a moment, then clear it
+                setTimeout(() => {
+                  setBulkSendProgress(null);
+                }, 3000);
               }
             }
           }
@@ -453,6 +459,7 @@ export const useExtension = () => {
           console.log('[Extension Hook] Cancel response:', response);
           const cancelled = response?.cancelled || false;
           if (cancelled) {
+            setShouldPoll(false); // Stop polling
             setBulkSendProgress(null); // Clear progress when cancelled
           }
           resolve(cancelled);
@@ -461,13 +468,17 @@ export const useExtension = () => {
     });
   }, []); // No dependencies needed
 
+  // State to track if we should be polling
+  const [shouldPoll, setShouldPoll] = useState(false);
+
   // Start polling when bulk send begins
   useEffect(() => {
-    if (typeof window !== 'undefined' && bulkSendProgress?.isActive) {
+    if (typeof window !== 'undefined' && shouldPoll) {
+      console.log('[Extension Hook] Starting progress polling...');
       const cleanup = pollProgress();
       return cleanup;
     }
-  }, [bulkSendProgress?.isActive, pollProgress]);
+  }, [shouldPoll, pollProgress]);
 
   useEffect(() => {
     // Only run in browser environment

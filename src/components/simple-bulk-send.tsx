@@ -20,6 +20,7 @@ import {
 } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useExtension } from '@/hooks/use-extension';
+import { AddTemplateDialog } from '@/components/dialogs/add-template-dialog';
 import {
   Users,
   MessageCircle,
@@ -27,10 +28,11 @@ import {
   Play,
   Square,
   X,
+  Plus,
 } from 'lucide-react';
 
 export function SimpleBulkSend() {
-  const { contacts, tags, templates } = useAppState();
+  const { contacts, tags, templates, extensionBulkSendProgress } = useAppState();
   const { toast } = useToast();
   const { sendBulkCampaign, bulkSendProgress, cancelBulkSend } = useExtension();
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -38,16 +40,19 @@ export function SimpleBulkSend() {
   // Ensure we're in browser environment
   const [isClient, setIsClient] = useState(false);
   
+  // Merge extension and webapp bulk send progress
+  const mergedBulkSendProgress = extensionBulkSendProgress || bulkSendProgress;
+  
   useEffect(() => {
     setIsClient(true);
   }, []);
 
   // Track bulk send completion
-  const [lastProgressState, setLastProgressState] = useState<typeof bulkSendProgress>(null);
+  const [lastProgressState, setLastProgressState] = useState<any>(null);
   
   useEffect(() => {
     // Check if bulk send just completed (was active, now inactive/null)
-    if (lastProgressState?.isActive && (!bulkSendProgress || !bulkSendProgress.isActive)) {
+    if (lastProgressState?.isActive && (!mergedBulkSendProgress || !mergedBulkSendProgress.isActive)) {
       const finalStats = lastProgressState;
       setTimeout(() => {
         toast({
@@ -58,8 +63,16 @@ export function SimpleBulkSend() {
       }, 500); // Small delay to ensure UI updates
     }
     
-    setLastProgressState(bulkSendProgress);
-  }, [bulkSendProgress, lastProgressState, toast]);
+    setLastProgressState(mergedBulkSendProgress);
+  }, [mergedBulkSendProgress, lastProgressState, toast]);
+
+  // Cleanup polling on unmount
+  useEffect(() => {
+    return () => {
+      // Component cleanup
+      console.log('[Bulk Send] Component unmounting');
+    };
+  }, []);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -216,28 +229,37 @@ export function SimpleBulkSend() {
   // Handle cancel
   const handleCancel = async () => {
     try {
-      const wasActive = bulkSendProgress?.isActive;
-      const currentStats = bulkSendProgress ? {
-        sent: bulkSendProgress.successCount,
-        failed: bulkSendProgress.failureCount,
-        total: bulkSendProgress.totalCount
+      const wasActive = mergedBulkSendProgress?.isActive;
+      const currentStats = mergedBulkSendProgress ? {
+        sent: mergedBulkSendProgress.successCount,
+        failed: mergedBulkSendProgress.failureCount,
+        total: mergedBulkSendProgress.totalCount
       } : null;
 
-      await cancelBulkSend();
+      const cancelled = await cancelBulkSend();
       
-      if (wasActive && currentStats) {
-        toast({
-          title: '⛔ Bulk Send Cancelled',
-          description: `Campaign stopped. Sent: ${currentStats.sent}, Failed: ${currentStats.failed} out of ${currentStats.total} total.`,
-          variant: 'destructive',
-        });
+      if (cancelled) {
+        if (wasActive && currentStats) {
+          toast({
+            title: '⛔ Bulk Send Cancelled',
+            description: `Campaign stopped. Sent: ${currentStats.sent}, Failed: ${currentStats.failed} out of ${currentStats.total} total.`,
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Bulk Send Cancelled',
+            description: 'The bulk send operation has been cancelled.',
+          });
+        }
       } else {
         toast({
-          title: 'Bulk Send Cancelled',
-          description: 'The bulk send operation has been cancelled.',
+          title: 'Cancel Failed',
+          description: 'Could not cancel the bulk send operation. It may have already completed.',
+          variant: 'destructive',
         });
       }
     } catch (error: any) {
+      console.error('[Bulk Send] Cancel error:', error);
       toast({
         title: 'Error',
         description: 'Failed to cancel bulk send.',
@@ -247,8 +269,8 @@ export function SimpleBulkSend() {
   };
 
   // Calculate progress percentage
-  const progressPercent = bulkSendProgress 
-    ? Math.round((bulkSendProgress.currentIndex / bulkSendProgress.totalCount) * 100) 
+  const progressPercent = mergedBulkSendProgress 
+    ? Math.round((mergedBulkSendProgress.currentIndex / mergedBulkSendProgress.totalCount) * 100) 
     : 0;
 
   // Don't render extension-dependent components during SSR
@@ -318,7 +340,21 @@ export function SimpleBulkSend() {
 
           {/* Template Selection */}
           <div className="space-y-3">
-            <Label>Template (Optional)</Label>
+            <div className="flex items-center justify-between">
+              <Label>Template</Label>
+              <AddTemplateDialog>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 px-3 text-xs ml-4"
+                  disabled={sending || !!mergedBulkSendProgress}
+                >
+                  <Plus className="h-3 w-3" />
+                  New Template
+                </Button>
+              </AddTemplateDialog>
+            </div>
             <Select value={formData.selectedTemplateId} onValueChange={handleTemplateSelect}>
               <SelectTrigger>
                 <SelectValue placeholder="Choose a template..." />
@@ -370,7 +406,7 @@ export function SimpleBulkSend() {
               placeholder="Hi {first_name}, I hope you're doing well..."
               value={formData.message}
               onChange={(e) => updateField('message', e.target.value)}
-              disabled={sending || !!bulkSendProgress}
+              disabled={sending || !!mergedBulkSendProgress}
               className="min-h-[120px]"
             />
           </div>
@@ -384,7 +420,7 @@ export function SimpleBulkSend() {
               min={5}
               max={30}
               step={1}
-              disabled={sending || !!bulkSendProgress}
+              disabled={sending || !!mergedBulkSendProgress}
               className="w-full"
             />
           </div>
@@ -406,7 +442,7 @@ export function SimpleBulkSend() {
           )}
 
           {/* Progress Display */}
-          {bulkSendProgress && (
+          {mergedBulkSendProgress && (
             <Card className="border-blue-200 bg-blue-50 dark:bg-blue-950/50">
               <CardContent className="p-4">
                 <div className="space-y-4">
@@ -416,7 +452,7 @@ export function SimpleBulkSend() {
                     </h4>
                     <div className="text-right">
                       <div className="text-sm text-blue-700 dark:text-blue-300">
-                        {bulkSendProgress.currentIndex} / {bulkSendProgress.totalCount}
+                        {mergedBulkSendProgress.currentIndex} / {mergedBulkSendProgress.totalCount}
                       </div>
                       <div className="text-xs text-blue-600 dark:text-blue-400">
                         {progressPercent}% Complete
@@ -438,7 +474,7 @@ export function SimpleBulkSend() {
                         </span>
                       </div>
                       <div className="text-xl font-bold text-green-700 dark:text-green-400">
-                        {bulkSendProgress.successCount}
+                        {mergedBulkSendProgress.successCount}
                       </div>
                     </div>
                     
@@ -450,7 +486,7 @@ export function SimpleBulkSend() {
                         </span>
                       </div>
                       <div className="text-xl font-bold text-red-700 dark:text-red-400">
-                        {bulkSendProgress.failureCount}
+                        {mergedBulkSendProgress.failureCount}
                       </div>
                     </div>
                     
@@ -462,27 +498,27 @@ export function SimpleBulkSend() {
                         </span>
                       </div>
                       <div className="text-xl font-bold text-gray-700 dark:text-gray-400">
-                        {bulkSendProgress.totalCount - bulkSendProgress.currentIndex}
+                        {mergedBulkSendProgress.totalCount - mergedBulkSendProgress.currentIndex}
                       </div>
                     </div>
                   </div>
 
                   {/* Show current contact if available */}
-                  {bulkSendProgress.currentContact && (
+                  {mergedBulkSendProgress.currentContact && (
                     <div className="p-3 bg-blue-100 dark:bg-blue-800/30 rounded-lg border-l-4 border-blue-500">
                       <div className="flex items-center gap-2">
                         <div className="animate-pulse w-2 h-2 bg-blue-500 rounded-full"></div>
                         <p className="text-sm text-blue-800 dark:text-blue-200">
-                          Currently messaging: <span className="font-semibold">{bulkSendProgress.currentContact.name}</span>
+                          Currently messaging: <span className="font-semibold">{mergedBulkSendProgress.currentContact.name}</span>
                         </p>
                       </div>
                     </div>
                   )}
 
                   {/* Time elapsed */}
-                  {bulkSendProgress.startTime && (
+                  {mergedBulkSendProgress.startTime && (
                     <div className="text-center text-xs text-blue-600 dark:text-blue-400">
-                      ⏱️ Running for {Math.round((Date.now() - bulkSendProgress.startTime) / 1000)}s
+                      ⏱️ Running for {Math.round((Date.now() - mergedBulkSendProgress.startTime) / 1000)}s
                     </div>
                   )}
                 </div>
@@ -492,7 +528,7 @@ export function SimpleBulkSend() {
 
           {/* Action Buttons */}
           <div className="flex gap-3">
-            {bulkSendProgress ? (
+            {mergedBulkSendProgress ? (
               <div className="flex flex-col sm:flex-row gap-3 w-full">
                 <Button 
                   onClick={handleCancel} 
